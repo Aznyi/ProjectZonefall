@@ -1,0 +1,22 @@
+debug: true
+
+match:
+  countdown-seconds: 10
+  duration-seconds: 600
+  restore-border-on-end: true
+
+zone:
+  border-start-size: 500.0
+  border-end-size: 75.0
+
+pve:
+  mob-spawn-interval-seconds: 20
+  mobs-per-player: 2
+  spawn-min-distance: 12.0
+  spawn-max-distance: 24.0
+
+extraction:
+  radius: 5.0
+  vertical-tolerance: 4.0
+  hold-seconds: 0
+

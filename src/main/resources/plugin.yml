@@ -1,0 +1,19 @@
+name: Zonefall
+version: ${version}
+main: com.zonefall.ZonefallPlugin
+api-version: '1.21'
+author: Zonefall
+description: Phase 1 prototype for the Zonefall extraction-survival Paper plugin.
+
+commands:
+  zonefall:
+    description: Zonefall admin and prototype commands.
+    usage: /zonefall help
+    aliases: [zf]
+    permission: zonefall.admin
+
+permissions:
+  zonefall.admin:
+    description: Allows use of Zonefall prototype/admin commands.
+    default: op
+

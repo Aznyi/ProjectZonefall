@@ -1,0 +1,25 @@
+# Zonefall plugin build output
+.gradle/
+build/
+out/
+
+# Local IDE state
+.idea/
+*.iml
+.vscode/
+
+# Paper server runtime state
+cache/
+config/
+crash-reports/
+libraries/
+logs/
+versions/
+world/
+world_nether/
+world_the_end/
+plugins/.paper-remapped/
+plugins/bStats/
+plugins/spark/
+*.log
+
