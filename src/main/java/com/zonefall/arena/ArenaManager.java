@@ -1,36 +1,76 @@
 package com.zonefall.arena;
 
 import com.zonefall.core.ZonefallConfig;
-import org.bukkit.Bukkit;
+import com.zonefall.core.ZonefallServices;
 import org.bukkit.Location;
-import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
+import java.util.Collection;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
 /**
- * Creates local test arenas. Later this can own arena definitions, world templates, and sessions.
+ * Registry for the configured prebuilt hub arenas.
  */
 public final class ArenaManager {
-    private final Plugin plugin;
-    private final ZonefallConfig config;
+    private final Map<String, ArenaController> arenas = new LinkedHashMap<>();
 
-    public ArenaManager(Plugin plugin, ZonefallConfig config) {
-        this.plugin = plugin;
-        this.config = config;
+    public ArenaManager(Plugin plugin, ZonefallConfig config, ZonefallServices services) {
+        for (ArenaDefinition definition : config.arenas()) {
+            arenas.put(definition.id().toLowerCase(), new ArenaController(plugin, config, services, definition));
+        }
+        plugin.getLogger().info("Loaded " + arenas.size() + " Zonefall arenas.");
     }
 
-    public Arena createLocalArena(Player creator) {
-        Location center = creator.getLocation().clone();
-        Location extraction = center.clone().add(Math.max(12.0, config.extractionRadius() * 3.0), 0.0, 0.0);
-        return new Arena("local-" + System.currentTimeMillis(), creator.getWorld(), center, extraction);
+    public Collection<ArenaController> arenas() {
+        return arenas.values();
     }
 
-    public Arena createLocalArenaFromDefaultWorld() {
-        World world = Bukkit.getWorlds().get(0);
-        Location center = world.getSpawnLocation().clone();
-        Location extraction = center.clone().add(Math.max(12.0, config.extractionRadius() * 3.0), 0.0, 0.0);
-        plugin.getLogger().info("Creating console local arena in world " + world.getName());
-        return new Arena("local-" + System.currentTimeMillis(), world, center, extraction);
+    public Optional<ArenaController> find(String id) {
+        return Optional.ofNullable(arenas.get(id.toLowerCase()));
+    }
+
+    public Optional<ArenaController> findForPlayer(UUID playerId) {
+        return arenas.values().stream().filter(arena -> arena.contains(playerId)).findFirst();
+    }
+
+    public Optional<ArenaController> findProtecting(Location location) {
+        return arenas.values().stream().filter(arena -> arena.protects(location)).findFirst();
+    }
+
+    public Optional<ArenaController> findSpectatorRegion(Location location) {
+        return arenas.values().stream().filter(arena -> arena.isSpectatorLocation(location)).findFirst();
+    }
+
+    public Optional<ArenaController> findJoinPoint(Location location) {
+        return arenas.values().stream().filter(arena -> arena.containsJoinPoint(location)).findFirst();
+    }
+
+    public void handleMove(Player player) {
+        findForPlayer(player.getUniqueId()).ifPresent(arena -> arena.handleMove(player));
+    }
+
+    public void handleDeath(Player player) {
+        findForPlayer(player.getUniqueId()).ifPresent(arena -> arena.handleDeath(player));
+    }
+
+    public void handleMobKill(Player player) {
+        findForPlayer(player.getUniqueId()).ifPresent(arena -> arena.handleMobKill(player));
+    }
+
+    public void handleInteract(Player player, Block block) {
+        findForPlayer(player.getUniqueId()).ifPresent(arena -> arena.handleInteract(player, block));
+    }
+
+    public void shutdown() {
+        arenas.values().forEach(ArenaController::shutdown);
+    }
+
+    public void drawJoinPointMarkers() {
+        arenas.values().forEach(ArenaController::drawJoinPointMarkers);
     }
 }
-

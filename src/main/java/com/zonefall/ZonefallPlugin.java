@@ -10,6 +10,10 @@ import com.zonefall.match.MatchListener;
 import com.zonefall.match.MatchManager;
 import com.zonefall.profile.InMemoryProfileService;
 import com.zonefall.stash.InMemoryStashService;
+import com.zonefall.stash.StashService;
+import com.zonefall.stash.YamlStashService;
+import com.zonefall.ui.ArenaStatusUi;
+import com.zonefall.ui.JoinPadLabelService;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -18,19 +22,27 @@ import org.bukkit.plugin.java.JavaPlugin;
  */
 public final class ZonefallPlugin extends JavaPlugin {
     private MatchManager matchManager;
+    private ZonefallServices services;
+    private ArenaStatusUi arenaStatusUi;
+    private JoinPadLabelService joinPadLabelService;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
         ZonefallConfig config = ZonefallConfig.from(getConfig());
-        ZonefallServices services = new ZonefallServices(
+        StashService stashService = config.stashPersistenceEnabled()
+                ? new YamlStashService(this)
+                : new InMemoryStashService();
+        services = new ZonefallServices(
                 new InMemoryProfileService(),
-                new InMemoryStashService(),
+                stashService,
                 new NoopCraftingService()
         );
-        ArenaManager arenaManager = new ArenaManager(this, config);
-        matchManager = new MatchManager(this, config, arenaManager, services);
+        ArenaManager arenaManager = new ArenaManager(this, config, services);
+        matchManager = new MatchManager(arenaManager, services, config);
+        arenaStatusUi = new ArenaStatusUi(this, arenaManager, config);
+        joinPadLabelService = new JoinPadLabelService(this, arenaManager, config);
 
         ZonefallCommand command = new ZonefallCommand(matchManager);
         PluginCommand pluginCommand = getCommand("zonefall");
@@ -41,6 +53,8 @@ public final class ZonefallPlugin extends JavaPlugin {
 
         getServer().getPluginManager().registerEvents(new ExtractionListener(matchManager), this);
         getServer().getPluginManager().registerEvents(new MatchListener(matchManager), this);
+        arenaStatusUi.start();
+        joinPadLabelService.start();
 
         getLogger().info("Zonefall enabled. Phase 1 prototype ready.");
     }
@@ -50,7 +64,15 @@ public final class ZonefallPlugin extends JavaPlugin {
         if (matchManager != null) {
             matchManager.shutdown();
         }
+        if (arenaStatusUi != null) {
+            arenaStatusUi.stop();
+        }
+        if (joinPadLabelService != null) {
+            joinPadLabelService.stop();
+        }
+        if (services != null) {
+            services.stashService().saveAll();
+        }
         getLogger().info("Zonefall disabled.");
     }
 }
-

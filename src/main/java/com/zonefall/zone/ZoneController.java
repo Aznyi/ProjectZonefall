@@ -12,6 +12,9 @@ public final class ZoneController {
     private final Plugin plugin;
     private final ZonefallConfig config;
     private final Arena arena;
+    private final double borderStartSize;
+    private final double borderEndSize;
+    private final int shrinkSeconds;
     private double originalSize;
     private double originalCenterX;
     private double originalCenterZ;
@@ -20,6 +23,19 @@ public final class ZoneController {
         this.plugin = plugin;
         this.config = config;
         this.arena = arena;
+        this.borderStartSize = config.borderStartSize();
+        this.borderEndSize = config.borderEndSize();
+        this.shrinkSeconds = config.matchDurationSeconds();
+    }
+
+    public ZoneController(Plugin plugin, ZonefallConfig config, Arena arena,
+                          double borderStartSize, double borderEndSize, int shrinkSeconds) {
+        this.plugin = plugin;
+        this.config = config;
+        this.arena = arena;
+        this.borderStartSize = borderStartSize;
+        this.borderEndSize = borderEndSize;
+        this.shrinkSeconds = shrinkSeconds;
     }
 
     public void start() {
@@ -29,10 +45,10 @@ public final class ZoneController {
         originalCenterZ = border.getCenter().getZ();
 
         border.setCenter(arena.center().getX(), arena.center().getZ());
-        border.setSize(config.borderStartSize());
-        border.setSize(config.borderEndSize(), config.matchDurationSeconds());
-        plugin.getLogger().info("Zone border started at " + config.borderStartSize()
-                + " and will shrink to " + config.borderEndSize() + ".");
+        border.setSize(borderStartSize);
+        border.setSize(borderEndSize, shrinkSeconds);
+        plugin.getLogger().info("Zone border started at " + borderStartSize
+                + " and will shrink to " + borderEndSize + ".");
     }
 
     public void tick(int elapsedSeconds) {

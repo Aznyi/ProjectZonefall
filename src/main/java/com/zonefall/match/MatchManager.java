@@ -1,158 +1,332 @@
 package com.zonefall.match;
 
-import com.zonefall.arena.Arena;
+import com.zonefall.arena.ArenaController;
 import com.zonefall.arena.ArenaManager;
-import com.zonefall.core.ZonefallConfig;
-import com.zonefall.core.ZonefallServices;
+import com.zonefall.loot.LootType;
+import com.zonefall.loot.source.LootSourceType;
 import com.zonefall.util.Messages;
+import org.bukkit.Bukkit;
+import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
-import org.bukkit.plugin.Plugin;
 
+import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Coordinates match creation and lookup. Phase 1 intentionally supports one local active match.
+ * Compatibility facade for commands/listeners. Runtime now delegates to configured arena controllers.
  */
 public final class MatchManager {
-    private final Plugin plugin;
-    private final ZonefallConfig config;
     private final ArenaManager arenaManager;
-    private final ZonefallServices services;
-    private Match currentMatch;
+    private final com.zonefall.core.ZonefallServices services;
+    private final com.zonefall.core.ZonefallConfig config;
 
-    public MatchManager(Plugin plugin, ZonefallConfig config, ArenaManager arenaManager, ZonefallServices services) {
-        this.plugin = plugin;
-        this.config = config;
+    public MatchManager(ArenaManager arenaManager, com.zonefall.core.ZonefallServices services, com.zonefall.core.ZonefallConfig config) {
         this.arenaManager = arenaManager;
         this.services = services;
+        this.config = config;
     }
 
-    public Optional<Match> currentMatch() {
-        return Optional.ofNullable(currentMatch).filter(match -> match.state() != MatchState.ENDED);
+    public Optional<ArenaController> findMatchFor(UUID playerId) {
+        return arenaManager.findForPlayer(playerId);
     }
 
-    public Optional<Match> findMatchFor(UUID playerId) {
-        return currentMatch().filter(match -> match.contains(playerId));
+    public void listArenas(CommandSender sender) {
+        sender.sendMessage(Messages.info("Zonefall arenas:"));
+        for (ArenaController arena : arenaManager.arenas()) {
+            sender.sendMessage(Messages.info("- " + arena.id() + " / " + arena.displayName()
+                    + " / " + arena.state()));
+        }
     }
 
-    public void create(CommandSender sender) {
-        if (currentMatch().isPresent()) {
-            sender.sendMessage(Messages.error("A local test match already exists. Stop it before creating another."));
+    public void arenaInfo(CommandSender sender, String id) {
+        ArenaController arena = requireArena(sender, id);
+        if (arena == null) {
             return;
         }
-
-        Arena arena = sender instanceof Player player
-                ? arenaManager.createLocalArena(player)
-                : arenaManager.createLocalArenaFromDefaultWorld();
-        currentMatch = new Match(plugin, config, services, arena);
-        sender.sendMessage(Messages.ok("Created local Zonefall match in world " + arena.world().getName() + "."));
-        sender.sendMessage(Messages.info("Extraction zone: "
-                + arena.extractionLocation().getBlockX() + ", "
-                + arena.extractionLocation().getBlockY() + ", "
-                + arena.extractionLocation().getBlockZ()));
-        plugin.getLogger().info(currentMatch.debugStatus());
+        sender.sendMessage(Messages.info(arena.infoLine()));
+        sender.sendMessage(Messages.info("World=" + arena.definition().worldName()
+                + ", joinable=" + arena.canJoin()));
     }
 
-    public void join(Player player) {
-        Match match = requireMatch(player);
-        if (match != null) {
-            match.addPlayer(player);
-        }
-    }
-
-    public void leave(Player player) {
-        Match match = findMatchFor(player.getUniqueId()).orElse(null);
-        if (match == null) {
-            player.sendMessage(Messages.error("You are not in a Zonefall match."));
+    public void joinArena(Player player, String id) {
+        if (arenaManager.findForPlayer(player.getUniqueId()).isPresent()) {
+            player.sendMessage(Messages.error("Leave your current arena before joining another."));
             return;
         }
-        match.removePlayer(player);
-        player.sendMessage(Messages.ok("Left the Zonefall match."));
+        ArenaController arena = requireArena(player, id);
+        if (arena != null) {
+            arena.join(player);
+        }
     }
 
-    public void start(CommandSender sender) {
-        Match match = requireMatch(sender);
-        if (match == null) {
+    public void leaveArena(Player player) {
+        ArenaController arena = arenaManager.findForPlayer(player.getUniqueId()).orElse(null);
+        if (arena == null) {
+            player.sendMessage(Messages.error("You are not in an arena."));
+            return;
+        }
+        arena.leave(player);
+    }
+
+    public void arenaStatus(CommandSender sender, String id) {
+        if (id != null) {
+            ArenaController arena = requireArena(sender, id);
+            if (arena != null) {
+                sender.sendMessage(Messages.info(arena.statusLine()));
+            }
+            return;
+        }
+        for (ArenaController arena : arenaManager.arenas()) {
+            sender.sendMessage(Messages.info(arena.statusLine()));
+        }
+    }
+
+    public void forceStart(CommandSender sender, String id) {
+        ArenaController arena = requireArena(sender, id);
+        if (arena != null) {
+            arena.forceStart();
+            sender.sendMessage(Messages.ok("Force-started " + arena.id() + "."));
+        }
+    }
+
+    public void resetArena(CommandSender sender, String id) {
+        ArenaController arena = requireArena(sender, id);
+        if (arena != null) {
+            arena.forceReset();
+            sender.sendMessage(Messages.ok("Reset " + arena.id() + "."));
+        }
+    }
+
+    public void spectate(Player player, String id) {
+        if (arenaManager.findForPlayer(player.getUniqueId()).isPresent()) {
+            player.sendMessage(Messages.error("Leave your current arena before spectating."));
+            return;
+        }
+        ArenaController arena = requireArena(player, id);
+        if (arena == null) {
+            return;
+        }
+        player.teleport(arena.spectatorLocation());
+        updateSpectatorState(player);
+        player.sendMessage(Messages.ok("Spectating " + arena.displayName() + "."));
+    }
+
+    public void stash(Player player) {
+        player.sendMessage(Messages.info("Stash: " + services.stashService()
+                .getContents(player.getUniqueId()).describe()));
+    }
+
+    public void lootStatus(CommandSender sender, String playerName) {
+        Player target = resolvePlayer(sender, playerName);
+        if (target == null) {
+            return;
+        }
+        ArenaController arena = arenaManager.findForPlayer(target.getUniqueId()).orElse(null);
+        if (arena == null) {
+            sender.sendMessage(Messages.info(target.getName() + " is not in an arena."));
+            return;
+        }
+        sender.sendMessage(Messages.info(arena.lootStatus(target)));
+    }
+
+    public void grantLoot(CommandSender sender, String playerName, String typeName, String amountText) {
+        Player target = Bukkit.getPlayerExact(playerName);
+        if (target == null) {
+            sender.sendMessage(Messages.error("Player not found: " + playerName));
+            return;
+        }
+        ArenaController arena = arenaManager.findForPlayer(target.getUniqueId()).orElse(null);
+        if (arena == null) {
+            sender.sendMessage(Messages.error("Target player is not in an arena."));
+            return;
+        }
+        LootType type;
+        int amount;
+        try {
+            type = LootType.valueOf(typeName.toUpperCase(Locale.ROOT));
+            amount = Integer.parseInt(amountText);
+        } catch (IllegalArgumentException ex) {
+            sender.sendMessage(Messages.error("Usage: /zonefall grantloot <player> <SCRAP|CLOTH|STONE|IRON_FRAGMENTS|GEMS> <amount>"));
+            return;
+        }
+        if (amount <= 0) {
+            sender.sendMessage(Messages.error("Amount must be greater than zero."));
+            return;
+        }
+        if (arena.grantLoot(target, type, amount)) {
+            sender.sendMessage(Messages.ok("Granted " + type.displayName() + " x" + amount + " to " + target.getName() + "."));
+        }
+    }
+
+    public void placeLoot(Player player, String typeName) {
+        ArenaController arena = arenaManager.findForPlayer(player.getUniqueId()).orElse(null);
+        if (arena == null) {
+            player.sendMessage(Messages.error("Join an arena before placing arena loot."));
             return;
         }
         try {
-            match.startCountdown();
-            sender.sendMessage(Messages.ok("Started match countdown."));
-        } catch (IllegalStateException ex) {
-            sender.sendMessage(Messages.error(ex.getMessage()));
+            arena.placeLoot(player, LootSourceType.valueOf(typeName.toUpperCase(Locale.ROOT)));
+        } catch (IllegalArgumentException ex) {
+            player.sendMessage(Messages.error("Unknown loot source. Try SUPPLY_CRATE, SCRAP_CACHE, or ORE_NODE."));
         }
-    }
-
-    public void stop(CommandSender sender) {
-        Match match = requireMatch(sender);
-        if (match == null) {
-            return;
-        }
-        match.forceEnd(MatchEndReason.ADMIN_STOP);
-        currentMatch = null;
-        sender.sendMessage(Messages.ok("Stopped current match."));
-    }
-
-    public void status(CommandSender sender) {
-        Match match = currentMatch().orElse(null);
-        if (match == null) {
-            sender.sendMessage(Messages.info("No active local test match."));
-            return;
-        }
-        sender.sendMessage(Messages.info(match.debugStatus()));
     }
 
     public void extract(Player player) {
-        Match match = findMatchFor(player.getUniqueId()).orElse(null);
-        if (match == null) {
-            player.sendMessage(Messages.error("You are not in a Zonefall match."));
+        ArenaController arena = arenaManager.findForPlayer(player.getUniqueId()).orElse(null);
+        if (arena == null) {
+            player.sendMessage(Messages.error("You are not in an arena."));
             return;
         }
-        match.tryExtract(player);
-        clearEndedMatch(match);
+        arena.tryExtract(player).ifPresent(message -> player.sendMessage(Messages.error(message)));
+    }
+
+    public void extractStatus(CommandSender sender, String playerName) {
+        Player target = resolvePlayer(sender, playerName);
+        if (target == null) {
+            return;
+        }
+        ArenaController arena = arenaManager.findForPlayer(target.getUniqueId()).orElse(null);
+        sender.sendMessage(Messages.info(arena == null
+                ? target.getName() + " is not in an arena."
+                : arena.extractionStatus(target)));
+    }
+
+    public void lootReload(CommandSender sender) {
+        services.stashService().saveAll();
+        sender.sendMessage(Messages.ok("Loot/stash data flushed. Restart to reload arena config."));
     }
 
     public void handleMove(Player player) {
-        Match match = findMatchFor(player.getUniqueId()).orElse(null);
-        if (match == null || match.state() != MatchState.ACTIVE) {
-            return;
+        if (arenaManager.findForPlayer(player.getUniqueId()).isEmpty()) {
+            arenaManager.findJoinPoint(player.getLocation()).ifPresent(arena -> arena.join(player));
         }
-        if (match.extractionManager().isInsideExtraction(player.getLocation())) {
-            match.tryExtract(player);
-            clearEndedMatch(match);
-        }
+        updateSpectatorState(player);
+        arenaManager.handleMove(player);
     }
 
     public void handleDeath(Player player) {
-        Match match = findMatchFor(player.getUniqueId()).orElse(null);
-        if (match == null) {
-            return;
+        arenaManager.handleDeath(player);
+    }
+
+    public void handleDamage(Player player) {
+        arenaManager.findForPlayer(player.getUniqueId()).ifPresent(arena -> arena.cancelExtraction(player, "damage taken"));
+    }
+
+    public void handleMobKill(Player player) {
+        arenaManager.handleMobKill(player);
+    }
+
+    public void handleInteract(Player player, Block block) {
+        arenaManager.handleInteract(player, block);
+    }
+
+    public Optional<org.bukkit.Location> respawnLocation(Player player) {
+        return arenaManager.findForPlayer(player.getUniqueId()).map(ArenaController::hubReturnLocation);
+    }
+
+    public boolean isProtected(org.bukkit.Location location) {
+        return arenaManager.findProtecting(location).isPresent();
+    }
+
+    public boolean canBuild(Player player, org.bukkit.Location location) {
+        Optional<ArenaController> arena = arenaManager.findProtecting(location);
+        return arena.isEmpty();
+    }
+
+    public boolean canSpectatorInteract(Player player, org.bukkit.Location location) {
+        Optional<ArenaController> arena = arenaManager.findProtecting(location);
+        return arena.isEmpty() || arena.get().isParticipant(player);
+    }
+
+    public boolean isArenaParticipant(Player player) {
+        return arenaManager.findForPlayer(player.getUniqueId()).isPresent();
+    }
+
+    public boolean isSpectating(Player player) {
+        return arenaManager.findForPlayer(player.getUniqueId()).isEmpty()
+                && arenaManager.findSpectatorRegion(player.getLocation()).isPresent();
+    }
+
+    public boolean shouldPreventSpectatorDamage() {
+        return config.spectatorPreventDamage();
+    }
+
+    public boolean shouldPreventSpectatorHunger() {
+        return config.spectatorPreventHunger();
+    }
+
+    public void updateSpectatorState(Player player) {
+        if (isSpectating(player)) {
+            if (config.spectatorFlightEnabled()) {
+                player.setAllowFlight(true);
+            }
+            player.setFoodLevel(20);
+            player.setSaturation(20.0f);
+        } else if (!isArenaParticipant(player) && player.getAllowFlight()) {
+            player.setFlying(false);
+            player.setAllowFlight(false);
         }
-        match.handlePlayerDeath(player);
-        clearEndedMatch(match);
     }
 
     public void shutdown() {
-        if (currentMatch != null) {
-            currentMatch.shutdown();
-            currentMatch = null;
-        }
+        arenaManager.shutdown();
     }
 
-    private Match requireMatch(CommandSender sender) {
-        Match match = currentMatch().orElse(null);
-        if (match == null) {
-            sender.sendMessage(Messages.error("No local test match exists. Run /zonefall create first."));
-        }
-        return match;
+    // Legacy aliases kept for short-term compatibility with the original prototype command flow.
+    public void create(CommandSender sender) {
+        sender.sendMessage(Messages.info("Arena mode is active. Use /zonefall arena list."));
     }
 
-    private void clearEndedMatch(Match match) {
-        if (match.state() == MatchState.ENDED && currentMatch == match) {
-            currentMatch = null;
+    public void start(CommandSender sender) {
+        arenaManager.arenas().stream().findFirst().ifPresent(arena -> {
+            arena.forceStart();
+            sender.sendMessage(Messages.ok("Force-started " + arena.id() + "."));
+        });
+    }
+
+    public void stop(CommandSender sender) {
+        arenaManager.arenas().forEach(ArenaController::forceReset);
+        sender.sendMessage(Messages.ok("Reset all arenas."));
+    }
+
+    public void join(Player player) {
+        arenaManager.arenas().stream().findFirst().ifPresent(arena -> arena.join(player));
+    }
+
+    public void leave(Player player) {
+        leaveArena(player);
+    }
+
+    public void status(CommandSender sender) {
+        arenaStatus(sender, null);
+    }
+
+    private ArenaController requireArena(CommandSender sender, String id) {
+        if (id == null || id.isBlank()) {
+            sender.sendMessage(Messages.error("Arena id is required."));
+            return null;
         }
+        ArenaController arena = arenaManager.find(id).orElse(null);
+        if (arena == null) {
+            sender.sendMessage(Messages.error("Unknown arena: " + id));
+        }
+        return arena;
+    }
+
+    private Player resolvePlayer(CommandSender sender, String playerName) {
+        if (playerName == null) {
+            if (sender instanceof Player player) {
+                return player;
+            }
+            sender.sendMessage(Messages.error("Console must specify a player."));
+            return null;
+        }
+        Player target = Bukkit.getPlayerExact(playerName);
+        if (target == null) {
+            sender.sendMessage(Messages.error("Player not found: " + playerName));
+        }
+        return target;
     }
 }
-

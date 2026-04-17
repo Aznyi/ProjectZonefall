@@ -1,7 +1,6 @@
 package com.zonefall.pve;
 
 import com.zonefall.core.ZonefallConfig;
-import com.zonefall.match.Match;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -21,13 +20,13 @@ public final class PvePressureManager {
 
     private final Plugin plugin;
     private final ZonefallConfig config;
-    private final Match match;
+    private final ActivePlayerProvider activePlayers;
     private final Random random = new Random();
 
-    public PvePressureManager(Plugin plugin, ZonefallConfig config, Match match) {
+    public PvePressureManager(Plugin plugin, ZonefallConfig config, ActivePlayerProvider activePlayers) {
         this.plugin = plugin;
         this.config = config;
-        this.match = match;
+        this.activePlayers = activePlayers;
     }
 
     public void start() {
@@ -38,8 +37,8 @@ public final class PvePressureManager {
         if (elapsedSeconds <= 0 || elapsedSeconds % config.mobSpawnIntervalSeconds() != 0) {
             return;
         }
-        for (UUID playerId : match.participants()) {
-            if (!match.isActiveParticipant(playerId)) {
+        for (UUID playerId : activePlayers.participants()) {
+            if (!activePlayers.isActiveParticipant(playerId)) {
                 continue;
             }
             Player player = Bukkit.getPlayer(playerId);
@@ -73,4 +72,3 @@ public final class PvePressureManager {
         }
     }
 }
-

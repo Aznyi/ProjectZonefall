@@ -1,6 +1,7 @@
 package com.zonefall.match;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -13,7 +14,10 @@ public record MatchSummary(
         Duration elapsed,
         Set<UUID> participants,
         Set<UUID> extractedPlayers,
-        Set<UUID> eliminatedPlayers
+        Set<UUID> eliminatedPlayers,
+        Map<UUID, String> extractedLootByPlayer,
+        Map<UUID, String> lostLootByPlayer,
+        long openedLootSources,
+        int totalLootSources
 ) {
 }
-

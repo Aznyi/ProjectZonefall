@@ -1,5 +1,6 @@
 # Zonefall plugin build output
 .gradle/
+.gradle-user-home/
 build/
 out/
 
@@ -22,4 +23,3 @@ plugins/.paper-remapped/
 plugins/bStats/
 plugins/spark/
 *.log
-
