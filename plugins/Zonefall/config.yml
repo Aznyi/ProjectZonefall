@@ -1,0 +1,290 @@
+debug: true
+
+match:
+  countdown-seconds: 10
+  duration-seconds: 600
+  restore-border-on-end: true
+
+hub:
+  spawn:
+    world: world
+    x: 378.5
+    y: 67.0
+    z: 41.5
+    yaw: 0.0
+    pitch: 0.0
+
+arena-defaults:
+  final-extraction-seconds: 30
+
+ui:
+  join-pad-particles: true
+  join-pad-labels:
+    enabled: true
+    height: 2.2
+  extraction-labels:
+    enabled: true
+    height: 2.4
+  spectator-labels:
+    enabled: true
+    height: 2.4
+
+spectator:
+  allow-flight: true
+  prevent-damage: true
+  prevent-hunger: true
+
+zone:
+  border-start-size: 500.0
+  border-end-size: 75.0
+
+arenas:
+  yard:
+    name: Ruined Yard
+    world: world
+    join-points:
+      main:
+        x: 372.5
+        y: 67.0
+        z: 45.5
+        radius: 1.75
+    center: { x: 378.5, y: 67.0, z: 140.5 }
+    join-spawn: { x: 378.5, y: 67.0, z: 175.5, yaw: 180.0, pitch: 0.0 }
+    spectator-point: { x: 378.5, y: 78.0, z: 210.5, yaw: 180.0, pitch: 20.0 }
+    extraction: { x: 404.5, y: 67.0, z: 140.5 }
+    extraction-activation: RANDOM_ONE
+    extraction-active-count: 1
+    extraction-reveal-mode: FINAL_EXTRACTION
+    extraction-reveal-seconds-remaining: 60
+    loot-activation: RANDOM_TWO
+    loot-active-count: 2
+    extractions:
+      - { x: 404.5, y: 67.0, z: 140.5 }
+      - { x: 352.5, y: 67.0, z: 132.5 }
+    countdown-seconds: 10
+    round-duration-seconds: 300
+    join-window-seconds: 45
+    allow-active-join-window: true
+    border-start-size: 140.0
+    border-end-size: 35.0
+    playable-region:
+      min: { x: 318, y: 0, z: 80 }
+      max: { x: 438, y: 320, z: 200 }
+    spectator-region:
+      min: { x: 303, y: 0, z: 65 }
+      max: { x: 453, y: 320, z: 215 }
+    loot-sources:
+      - id: yard-crate-a
+        type: SUPPLY_CRATE
+        table: supply-crate
+        tier: standard
+        location: { x: 386.5, y: 67.0, z: 144.5 }
+      - id: yard-scrap-a
+        type: SCRAP_CACHE
+        table: scrap-cache
+        tier: common
+        location: { x: 371.5, y: 67.0, z: 146.5 }
+      - id: yard-ore-a
+        type: ORE_NODE
+        table: ore-node
+        tier: uncommon
+        location: { x: 382.5, y: 67.0, z: 131.5 }
+  hollow:
+    name: Iron Hollow
+    world: world
+    join-points:
+      main:
+        x: 378.5
+        y: 67.0
+        z: 45.5
+        radius: 1.75
+    center: { x: 538.5, y: 67.0, z: 140.5 }
+    join-spawn: { x: 538.5, y: 67.0, z: 175.5, yaw: 180.0, pitch: 0.0 }
+    spectator-point: { x: 538.5, y: 78.0, z: 210.5, yaw: 180.0, pitch: 20.0 }
+    extraction: { x: 564.5, y: 67.0, z: 140.5 }
+    extraction-activation: RANDOM_TWO
+    extraction-active-count: 2
+    extraction-reveal-mode: CUSTOM_TIME_REMAINING
+    extraction-reveal-seconds-remaining: 90
+    loot-activation: RANDOM_TWO
+    loot-active-count: 2
+    extractions:
+      - { x: 564.5, y: 67.0, z: 140.5 }
+      - { x: 512.5, y: 67.0, z: 132.5 }
+    countdown-seconds: 10
+    round-duration-seconds: 300
+    join-window-seconds: 45
+    allow-active-join-window: true
+    border-start-size: 140.0
+    border-end-size: 35.0
+    playable-region:
+      min: { x: 478, y: 0, z: 80 }
+      max: { x: 598, y: 320, z: 200 }
+    spectator-region:
+      min: { x: 463, y: 0, z: 65 }
+      max: { x: 613, y: 320, z: 215 }
+    loot-sources:
+      - id: hollow-crate-a
+        type: SUPPLY_CRATE
+        table: rare-cache
+        tier: rare
+        location: { x: 546.5, y: 67.0, z: 144.5 }
+      - id: hollow-scrap-a
+        type: SCRAP_CACHE
+        table: scrap-cache
+        tier: common
+        location: { x: 531.5, y: 67.0, z: 146.5 }
+      - id: hollow-ore-a
+        type: ORE_NODE
+        table: ore-node
+        tier: uncommon
+        location: { x: 542.5, y: 67.0, z: 131.5 }
+  glasswatch:
+    name: Glasswatch
+    world: world
+    join-points:
+      main:
+        x: 384.5
+        y: 67.0
+        z: 45.5
+        radius: 1.75
+    center: { x: 218.5, y: 67.0, z: 140.5 }
+    join-spawn: { x: 218.5, y: 67.0, z: 175.5, yaw: 180.0, pitch: 0.0 }
+    spectator-point: { x: 218.5, y: 78.0, z: 210.5, yaw: 180.0, pitch: 20.0 }
+    extraction: { x: 244.5, y: 67.0, z: 140.5 }
+    extraction-activation: ALL_ACTIVE
+    extraction-active-count: 1
+    extraction-reveal-mode: ROUND_START
+    extraction-reveal-seconds-remaining: 60
+    loot-activation: ALL_ACTIVE
+    loot-active-count: 3
+    extractions:
+      - { x: 244.5, y: 67.0, z: 140.5 }
+      - { x: 192.5, y: 67.0, z: 132.5 }
+    countdown-seconds: 10
+    round-duration-seconds: 300
+    join-window-seconds: 45
+    allow-active-join-window: true
+    border-start-size: 140.0
+    border-end-size: 35.0
+    playable-region:
+      min: { x: 158, y: 0, z: 80 }
+      max: { x: 278, y: 320, z: 200 }
+    spectator-region:
+      min: { x: 143, y: 0, z: 65 }
+      max: { x: 293, y: 320, z: 215 }
+    loot-sources:
+      - id: glasswatch-crate-a
+        type: SUPPLY_CRATE
+        table: supply-crate
+        tier: standard
+        location: { x: 226.5, y: 67.0, z: 144.5 }
+      - id: glasswatch-scrap-a
+        type: SCRAP_CACHE
+        table: scrap-cache
+        tier: common
+        location: { x: 211.5, y: 67.0, z: 146.5 }
+      - id: glasswatch-ore-a
+        type: ORE_NODE
+        table: gem-cache
+        tier: rare
+        location: { x: 222.5, y: 67.0, z: 131.5 }
+
+pve:
+  mob-spawn-interval-seconds: 20
+  mobs-per-player: 2
+  spawn-min-distance: 12.0
+  spawn-max-distance: 24.0
+
+extraction:
+  radius: 5.0
+  vertical-tolerance: 4.0
+  hold-seconds: 5
+
+loot:
+  death-drop-pickup-radius: 2.5
+  mob-kill-reward:
+    SCRAP: 2
+    CLOTH: 1
+    STONE: 1
+    IRON_FRAGMENTS: 1
+    GEMS: 0
+  tables:
+    supply-crate:
+      rolls: 3
+      entries:
+        - type: SCRAP
+          min: 2
+          max: 5
+          weight: 45
+        - type: CLOTH
+          min: 1
+          max: 4
+          weight: 30
+        - type: IRON_FRAGMENTS
+          min: 1
+          max: 3
+          weight: 18
+        - type: GEMS
+          min: 1
+          max: 1
+          weight: 7
+    scrap-cache:
+      rolls: 2
+      entries:
+        - type: SCRAP
+          min: 3
+          max: 7
+          weight: 65
+        - type: CLOTH
+          min: 1
+          max: 3
+          weight: 25
+        - type: IRON_FRAGMENTS
+          min: 1
+          max: 2
+          weight: 10
+    ore-node:
+      rolls: 2
+      entries:
+        - type: STONE
+          min: 3
+          max: 8
+          weight: 55
+        - type: IRON_FRAGMENTS
+          min: 2
+          max: 5
+          weight: 35
+        - type: GEMS
+          min: 1
+          max: 2
+          weight: 10
+    rare-cache:
+      rolls: 3
+      entries:
+        - type: IRON_FRAGMENTS
+          min: 2
+          max: 5
+          weight: 45
+        - type: GEMS
+          min: 1
+          max: 3
+          weight: 35
+        - type: SCRAP
+          min: 3
+          max: 6
+          weight: 20
+    gem-cache:
+      rolls: 2
+      entries:
+        - type: GEMS
+          min: 1
+          max: 4
+          weight: 70
+        - type: IRON_FRAGMENTS
+          min: 2
+          max: 4
+          weight: 30
+
+stash:
+  persistence-enabled: true
