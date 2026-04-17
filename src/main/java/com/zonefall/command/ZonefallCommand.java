@@ -92,6 +92,8 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Messages.info("/zonefall arena join <id>"));
         sender.sendMessage(Messages.info("/zonefall arena leave"));
         sender.sendMessage(Messages.info("/zonefall arena status [id]"));
+        sender.sendMessage(Messages.info("/zonefall arena rolls <id>"));
+        sender.sendMessage(Messages.info("/zonefall arena debug <id>"));
         sender.sendMessage(Messages.info("/zonefall arena forcestart <id>"));
         sender.sendMessage(Messages.info("/zonefall arena reset <id>"));
         sender.sendMessage(Messages.info("/zonefall arena spectate <id>"));
@@ -131,6 +133,20 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
             }
             case "leave" -> requirePlayer(sender, matchManager::leaveArena);
             case "status" -> matchManager.arenaStatus(sender, args.length >= 3 ? args[2] : null);
+            case "rolls" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(Messages.error("Usage: /" + label + " arena rolls <id>"));
+                    return;
+                }
+                matchManager.arenaRolls(sender, args[2]);
+            }
+            case "debug" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(Messages.error("Usage: /" + label + " arena debug <id>"));
+                    return;
+                }
+                matchManager.arenaDebug(sender, args[2]);
+            }
             case "forcestart" -> {
                 if (args.length < 3) {
                     sender.sendMessage(Messages.error("Usage: /" + label + " arena forcestart <id>"));

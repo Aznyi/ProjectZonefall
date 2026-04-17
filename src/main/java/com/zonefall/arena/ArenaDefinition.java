@@ -1,6 +1,7 @@
 package com.zonefall.arena;
 
 import com.zonefall.extract.ExtractionActivationMode;
+import com.zonefall.extract.ExtractionRevealMode;
 import com.zonefall.loot.source.LootActivationMode;
 import org.bukkit.configuration.ConfigurationSection;
 
@@ -22,6 +23,8 @@ public record ArenaDefinition(
         List<LocationSpec> extractions,
         ExtractionActivationMode extractionActivationMode,
         int activeExtractionCount,
+        ExtractionRevealMode extractionRevealMode,
+        int extractionRevealSecondsRemaining,
         CuboidRegion playableRegion,
         CuboidRegion spectatorRegion,
         int countdownSeconds,
@@ -53,6 +56,8 @@ public record ArenaDefinition(
                 readExtractions(section, world),
                 readActivationMode(section),
                 section.getInt("extraction-active-count", 1),
+                readRevealMode(section),
+                section.getInt("extraction-reveal-seconds-remaining", 60),
                 CuboidRegion.from(section.getConfigurationSection("playable-region"), world, 64),
                 CuboidRegion.from(section.getConfigurationSection("spectator-region"), world, 80),
                 section.getInt("countdown-seconds", 10),
@@ -73,6 +78,14 @@ public record ArenaDefinition(
             return ExtractionActivationMode.valueOf(section.getString("extraction-activation", "ALL_ACTIVE").toUpperCase(java.util.Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             return ExtractionActivationMode.ALL_ACTIVE;
+        }
+    }
+
+    private static ExtractionRevealMode readRevealMode(ConfigurationSection section) {
+        try {
+            return ExtractionRevealMode.valueOf(section.getString("extraction-reveal-mode", "ROUND_START").toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return ExtractionRevealMode.ROUND_START;
         }
     }
 

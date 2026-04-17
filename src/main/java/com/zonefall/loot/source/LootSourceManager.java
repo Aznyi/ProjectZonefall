@@ -31,6 +31,7 @@ public final class LootSourceManager {
     private final ZonefallConfig config;
     private final Arena arena;
     private final Map<LootSourceType, WeightedLootTable> tables;
+    private final Map<String, WeightedLootTable> namedTables;
     private final List<LootSource> sources = new ArrayList<>();
     private LootActivationMode activationMode = LootActivationMode.ALL_ACTIVE;
     private int activeCount = 1;
@@ -40,13 +41,14 @@ public final class LootSourceManager {
         this.config = config;
         this.arena = arena;
         this.tables = new EnumMap<>(config.lootTables());
+        this.namedTables = config.namedLootTables();
     }
 
     public void registerDefaults() {
         Location center = arena.center();
-        addSource(LootSourceType.SUPPLY_CRATE, center.clone().add(8, 0, 4), true);
-        addSource(LootSourceType.SCRAP_CACHE, center.clone().add(-7, 0, 6), true);
-        addSource(LootSourceType.ORE_NODE, center.clone().add(4, 0, -9), true);
+        addSource("default-crate", LootSourceType.SUPPLY_CRATE, center.clone().add(8, 0, 4), LootSourceType.SUPPLY_CRATE.configKey(), "standard", true);
+        addSource("default-scrap", LootSourceType.SCRAP_CACHE, center.clone().add(-7, 0, 6), LootSourceType.SCRAP_CACHE.configKey(), "standard", true);
+        addSource("default-ore", LootSourceType.ORE_NODE, center.clone().add(4, 0, -9), LootSourceType.ORE_NODE.configKey(), "standard", true);
         plugin.getLogger().info("Registered " + sources.size() + " default loot sources.");
     }
 
@@ -58,7 +60,7 @@ public final class LootSourceManager {
             return;
         }
         for (ArenaLootSourcePlacement placement : placements) {
-            addSource(placement.type(), placement.location().toLocation(), false);
+            addSource(placement.id(), placement.type(), placement.location().toLocation(), placement.tableKey(), placement.tier(), false);
         }
         selectActiveSources();
         applyMarkerBlocks();
@@ -66,14 +68,19 @@ public final class LootSourceManager {
     }
 
     public LootSource addSource(LootSourceType type, Location requestedLocation) {
-        return addSource(type, requestedLocation, true);
+        return addSource(type.name().toLowerCase(), type, requestedLocation, type.configKey(), "admin", true);
     }
 
     public LootSource addSource(LootSourceType type, Location requestedLocation, boolean active) {
+        return addSource(type.name().toLowerCase(), type, requestedLocation, type.configKey(), "standard", active);
+    }
+
+    public LootSource addSource(String debugId, LootSourceType type, Location requestedLocation,
+                                String tableKey, String tier, boolean active) {
         Location location = requestedLocation.clone();
         location.setY(location.getWorld().getHighestBlockYAt(location) + 1.0);
         Block block = location.getBlock();
-        LootSource source = new LootSource(UUID.randomUUID(), type, block.getLocation(), block.getType(), active);
+        LootSource source = new LootSource(UUID.randomUUID(), debugId, type, block.getLocation(), block.getType(), tableKey, tier, active);
         if (active) {
             block.setType(type.markerMaterial());
         }
@@ -99,7 +106,7 @@ public final class LootSourceManager {
             }
             source.markConsumed();
             block.setType(Material.COBBLESTONE);
-            LootBundle reward = tables.getOrDefault(source.type(), WeightedLootTable.fallback()).roll();
+            LootBundle reward = tableFor(source).roll();
             player.sendMessage(Messages.ok("Looted " + source.type().displayName() + ": " + reward.describe() + "."));
             return Optional.of(reward);
         }
@@ -147,6 +154,13 @@ public final class LootSourceManager {
         return sources.stream().filter(LootSource::active).map(LootSource::describe).toList().toString();
     }
 
+    public String debugSummary() {
+        return "mode=" + activationMode
+                + " active=" + activeCount() + "/" + sourceCount()
+                + " activeSources=" + describeActiveSources()
+                + " inactiveSources=" + describeInactiveSources();
+    }
+
     public String describeInactiveSources() {
         return sources.stream().filter(source -> !source.active()).map(LootSource::describe).toList().toString();
     }
@@ -189,5 +203,13 @@ public final class LootSourceManager {
         for (LootSource source : sources) {
             source.location().getBlock().setType(source.active() ? source.type().markerMaterial() : source.originalMaterial());
         }
+    }
+
+    private WeightedLootTable tableFor(LootSource source) {
+        WeightedLootTable named = namedTables.get(source.tableKey().toLowerCase(java.util.Locale.ROOT));
+        if (named != null) {
+            return named;
+        }
+        return tables.getOrDefault(source.type(), WeightedLootTable.fallback());
     }
 }

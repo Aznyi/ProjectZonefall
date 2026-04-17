@@ -11,6 +11,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -36,6 +37,7 @@ public record ZonefallConfig(
         double deathDropPickupRadius,
         boolean stashPersistenceEnabled,
         Map<LootSourceType, WeightedLootTable> lootTables,
+        Map<String, WeightedLootTable> namedLootTables,
         LocationSpec hubSpawn,
         List<ArenaDefinition> arenas,
         int finalExtractionSeconds,
@@ -69,6 +71,7 @@ public record ZonefallConfig(
                 config.getDouble("loot.death-drop-pickup-radius", 2.5),
                 config.getBoolean("stash.persistence-enabled", true),
                 readLootTables(config),
+                readNamedLootTables(config),
                 LocationSpec.from(config.getConfigurationSection("hub.spawn"), "world"),
                 readArenas(config),
                 config.getInt("arena-defaults.final-extraction-seconds", 30),
@@ -106,30 +109,43 @@ public record ZonefallConfig(
         Map<LootSourceType, WeightedLootTable> tables = new EnumMap<>(LootSourceType.class);
         for (LootSourceType sourceType : LootSourceType.values()) {
             String path = "loot.tables." + sourceType.configKey();
-            int rolls = config.getInt(path + ".rolls", 2);
-            List<WeightedLootEntry> entries = new ArrayList<>();
-            if (config.isList(path + ".entries")) {
-                for (Map<?, ?> rawEntry : config.getMapList(path + ".entries")) {
-                    Object typeValue = rawEntry.get("type");
-                    if (typeValue == null) {
-                        continue;
-                    }
-                    try {
-                        LootType type = LootType.valueOf(typeValue.toString().toUpperCase(Locale.ROOT));
-                        int min = readInt(rawEntry, "min", 1);
-                        int max = readInt(rawEntry, "max", min);
-                        int weight = readInt(rawEntry, "weight", 1);
-                        entries.add(new WeightedLootEntry(type, min, max, weight));
-                    } catch (IllegalArgumentException ignored) {
-                        // Bad entries are ignored so local config mistakes do not prevent startup.
-                    }
-                }
-            }
-            tables.put(sourceType, entries.isEmpty()
-                    ? WeightedLootTable.fallback()
-                    : new WeightedLootTable(entries, rolls));
+            tables.put(sourceType, readLootTable(config, path));
         }
         return Map.copyOf(tables);
+    }
+
+    private static Map<String, WeightedLootTable> readNamedLootTables(FileConfiguration config) {
+        Map<String, WeightedLootTable> tables = new LinkedHashMap<>();
+        if (!config.isConfigurationSection("loot.tables")) {
+            return Map.copyOf(tables);
+        }
+        for (String key : config.getConfigurationSection("loot.tables").getKeys(false)) {
+            tables.put(key.toLowerCase(Locale.ROOT), readLootTable(config, "loot.tables." + key));
+        }
+        return Map.copyOf(tables);
+    }
+
+    private static WeightedLootTable readLootTable(FileConfiguration config, String path) {
+        int rolls = config.getInt(path + ".rolls", 2);
+        List<WeightedLootEntry> entries = new ArrayList<>();
+        if (config.isList(path + ".entries")) {
+            for (Map<?, ?> rawEntry : config.getMapList(path + ".entries")) {
+                Object typeValue = rawEntry.get("type");
+                if (typeValue == null) {
+                    continue;
+                }
+                try {
+                    LootType type = LootType.valueOf(typeValue.toString().toUpperCase(Locale.ROOT));
+                    int min = readInt(rawEntry, "min", 1);
+                    int max = readInt(rawEntry, "max", min);
+                    int weight = readInt(rawEntry, "weight", 1);
+                    entries.add(new WeightedLootEntry(type, min, max, weight));
+                } catch (IllegalArgumentException ignored) {
+                    // Bad entries are ignored so local config mistakes do not prevent startup.
+                }
+            }
+        }
+        return entries.isEmpty() ? WeightedLootTable.fallback() : new WeightedLootTable(entries, rolls);
     }
 
     private static int readInt(Map<?, ?> values, String key, int fallback) {
@@ -180,6 +196,8 @@ public record ZonefallConfig(
                 List.of(new LocationSpec(world, offsetX + 20.5, hubSpawn.y(), 100.5, 90, 0)),
                 com.zonefall.extract.ExtractionActivationMode.ALL_ACTIVE,
                 1,
+                com.zonefall.extract.ExtractionRevealMode.ROUND_START,
+                60,
                 new com.zonefall.arena.CuboidRegion(world, offsetX - 60, 0, 40, offsetX + 60, 320, 160),
                 new com.zonefall.arena.CuboidRegion(world, offsetX - 75, 0, 25, offsetX + 75, 320, 175),
                 10,

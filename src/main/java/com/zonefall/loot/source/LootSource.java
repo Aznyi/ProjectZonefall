@@ -10,17 +10,24 @@ import java.util.UUID;
  */
 public final class LootSource {
     private final UUID id;
+    private final String debugId;
     private final LootSourceType type;
     private final Location location;
     private final Material originalMaterial;
+    private final String tableKey;
+    private final String tier;
     private boolean active;
     private boolean consumed;
 
-    public LootSource(UUID id, LootSourceType type, Location location, Material originalMaterial, boolean active) {
+    public LootSource(UUID id, String debugId, LootSourceType type, Location location, Material originalMaterial,
+                      String tableKey, String tier, boolean active) {
         this.id = id;
+        this.debugId = debugId;
         this.type = type;
         this.location = location;
         this.originalMaterial = originalMaterial;
+        this.tableKey = tableKey;
+        this.tier = tier;
         this.active = active;
     }
 
@@ -30,6 +37,18 @@ public final class LootSource {
 
     public LootSourceType type() {
         return type;
+    }
+
+    public String debugId() {
+        return debugId;
+    }
+
+    public String tableKey() {
+        return tableKey;
+    }
+
+    public String tier() {
+        return tier;
     }
 
     public Location location() {
@@ -61,6 +80,9 @@ public final class LootSource {
                 + location.getBlockX() + ","
                 + location.getBlockY() + ","
                 + location.getBlockZ()
+                + " id=" + debugId
+                + " table=" + tableKey
+                + " tier=" + tier
                 + (active ? " active" : " inactive")
                 + (consumed ? " consumed" : " available");
     }

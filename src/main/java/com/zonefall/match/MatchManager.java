@@ -83,6 +83,17 @@ public final class MatchManager {
         }
     }
 
+    public void arenaRolls(CommandSender sender, String id) {
+        ArenaController arena = requireArena(sender, id);
+        if (arena != null) {
+            sender.sendMessage(Messages.info(arena.debugLine()));
+        }
+    }
+
+    public void arenaDebug(CommandSender sender, String id) {
+        arenaRolls(sender, id);
+    }
+
     public void forceStart(CommandSender sender, String id) {
         ArenaController arena = requireArena(sender, id);
         if (arena != null) {

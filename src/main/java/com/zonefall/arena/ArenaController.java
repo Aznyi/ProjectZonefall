@@ -87,7 +87,9 @@ public final class ArenaController implements ActivePlayerProvider {
                 runtimeArena,
                 definition.extractions().stream().map(LocationSpec::toLocation).toList(),
                 definition.extractionActivationMode(),
-                definition.activeExtractionCount()
+                definition.activeExtractionCount(),
+                definition.extractionRevealMode(),
+                definition.extractionRevealSecondsRemaining()
         );
         this.pvePressureManager = new PvePressureManager(plugin, config, this);
         this.lootSourceManager = new LootSourceManager(plugin, config, runtimeArena);
@@ -342,6 +344,7 @@ public final class ArenaController implements ActivePlayerProvider {
                 + " eliminated=" + eliminatedPlayers.size()
                 + " remaining=" + remainingSeconds() + "s"
                 + " join=" + (joinWindowOpen() ? "open" : "closed")
+                + " extractionReveal=" + extractionManager.revealState()
                 + " extracts=" + extractionManager.describeActiveZones()
                 + " loot=" + lootSourceManager.activeCount() + " active/" + lootSourceManager.inactiveCount() + " inactive"
                 + " drops=" + lootTracker.describeDrops();
@@ -369,12 +372,20 @@ public final class ArenaController implements ActivePlayerProvider {
                 + " extractions=" + extractions
                 + " activeExtractions=" + extractionManager.describeActiveZones()
                 + " inactiveExtractions=" + extractionManager.describeInactiveZones()
+                + " extractionMode=" + definition.extractionActivationMode()
+                + " reveal=" + extractionManager.revealState()
                 + " joinPoints=" + joinPoints
                 + " lootPlacements=" + definition.lootSources().size()
                 + " activeLoot=" + lootSourceManager.activeCount()
                 + " inactiveLoot=" + lootSourceManager.inactiveCount()
                 + " lootMode=" + definition.lootActivationMode()
                 + " spectatorPoint=" + spectatorLocation().getBlockX() + "," + spectatorLocation().getBlockY() + "," + spectatorLocation().getBlockZ();
+    }
+
+    public String debugLine() {
+        return infoLine()
+                + " lootDebug=" + lootSourceManager.debugSummary()
+                + " extractionDebug=" + extractionManager.describeZones();
     }
 
     public Map<UUID, String> extractedLootSummary() {
@@ -412,6 +423,9 @@ public final class ArenaController implements ActivePlayerProvider {
         );
         broadcast(displayName() + " is active. Early join window: " + definition.joinWindowSeconds() + "s.");
         announcements.announce(this, "Round active.");
+        if (extractionManager.revealed()) {
+            announcements.announce(this, "Extraction routes revealed.");
+        }
     }
 
     private void tickCountdown() {
@@ -432,10 +446,12 @@ public final class ArenaController implements ActivePlayerProvider {
         lootTracker.drawDropMarkers();
         lootSourceManager.drawMarkers();
         tickExtractionHolds();
+        revealExtractionIfReady();
 
         if (state == ArenaState.ACTIVE
                 && definition.roundDurationSeconds() - elapsedSeconds <= config.finalExtractionSeconds()) {
             state = ArenaState.FINAL_EXTRACTION;
+            revealExtractionIfReady();
             broadcast("Final extraction window. Get out now.");
             announcements.announce(this, "Final extraction started.");
             for (UUID playerId : participants) {
@@ -447,6 +463,15 @@ public final class ArenaController implements ActivePlayerProvider {
         }
         if (elapsedSeconds >= definition.roundDurationSeconds()) {
             closeAndReset(true);
+        }
+    }
+
+    private void revealExtractionIfReady() {
+        boolean finalPhase = state == ArenaState.FINAL_EXTRACTION
+                || definition.roundDurationSeconds() - elapsedSeconds <= config.finalExtractionSeconds();
+        if (extractionManager.shouldReveal(remainingSeconds(), finalPhase) && extractionManager.revealNow()) {
+            broadcast("Extraction routes revealed: " + extractionManager.describeActiveZones() + ".");
+            announcements.announce(this, "Extraction routes revealed.");
         }
     }
 

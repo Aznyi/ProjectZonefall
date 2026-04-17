@@ -54,6 +54,8 @@ arenas:
     extraction: { x: 404.5, y: 67.0, z: 140.5 }
     extraction-activation: RANDOM_ONE
     extraction-active-count: 1
+    extraction-reveal-mode: FINAL_EXTRACTION
+    extraction-reveal-seconds-remaining: 60
     loot-activation: RANDOM_TWO
     loot-active-count: 2
     extractions:
@@ -74,12 +76,18 @@ arenas:
     loot-sources:
       - id: yard-crate-a
         type: SUPPLY_CRATE
+        table: supply-crate
+        tier: standard
         location: { x: 386.5, y: 67.0, z: 144.5 }
       - id: yard-scrap-a
         type: SCRAP_CACHE
+        table: scrap-cache
+        tier: common
         location: { x: 371.5, y: 67.0, z: 146.5 }
       - id: yard-ore-a
         type: ORE_NODE
+        table: ore-node
+        tier: uncommon
         location: { x: 382.5, y: 67.0, z: 131.5 }
   hollow:
     name: Iron Hollow
@@ -96,6 +104,8 @@ arenas:
     extraction: { x: 564.5, y: 67.0, z: 140.5 }
     extraction-activation: RANDOM_TWO
     extraction-active-count: 2
+    extraction-reveal-mode: CUSTOM_TIME_REMAINING
+    extraction-reveal-seconds-remaining: 90
     loot-activation: RANDOM_TWO
     loot-active-count: 2
     extractions:
@@ -116,12 +126,18 @@ arenas:
     loot-sources:
       - id: hollow-crate-a
         type: SUPPLY_CRATE
+        table: rare-cache
+        tier: rare
         location: { x: 546.5, y: 67.0, z: 144.5 }
       - id: hollow-scrap-a
         type: SCRAP_CACHE
+        table: scrap-cache
+        tier: common
         location: { x: 531.5, y: 67.0, z: 146.5 }
       - id: hollow-ore-a
         type: ORE_NODE
+        table: ore-node
+        tier: uncommon
         location: { x: 542.5, y: 67.0, z: 131.5 }
   glasswatch:
     name: Glasswatch
@@ -138,6 +154,8 @@ arenas:
     extraction: { x: 244.5, y: 67.0, z: 140.5 }
     extraction-activation: ALL_ACTIVE
     extraction-active-count: 1
+    extraction-reveal-mode: ROUND_START
+    extraction-reveal-seconds-remaining: 60
     loot-activation: ALL_ACTIVE
     loot-active-count: 3
     extractions:
@@ -158,12 +176,18 @@ arenas:
     loot-sources:
       - id: glasswatch-crate-a
         type: SUPPLY_CRATE
+        table: supply-crate
+        tier: standard
         location: { x: 226.5, y: 67.0, z: 144.5 }
       - id: glasswatch-scrap-a
         type: SCRAP_CACHE
+        table: scrap-cache
+        tier: common
         location: { x: 211.5, y: 67.0, z: 146.5 }
       - id: glasswatch-ore-a
         type: ORE_NODE
+        table: gem-cache
+        tier: rare
         location: { x: 222.5, y: 67.0, z: 131.5 }
 
 pve:
@@ -235,6 +259,32 @@ loot:
           min: 1
           max: 2
           weight: 10
+    rare-cache:
+      rolls: 3
+      entries:
+        - type: IRON_FRAGMENTS
+          min: 2
+          max: 5
+          weight: 45
+        - type: GEMS
+          min: 1
+          max: 3
+          weight: 35
+        - type: SCRAP
+          min: 3
+          max: 6
+          weight: 20
+    gem-cache:
+      rolls: 2
+      entries:
+        - type: GEMS
+          min: 1
+          max: 4
+          weight: 70
+        - type: IRON_FRAGMENTS
+          min: 2
+          max: 4
+          weight: 30
 
 stash:
   persistence-enabled: true

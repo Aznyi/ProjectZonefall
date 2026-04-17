@@ -9,7 +9,7 @@ import java.util.Map;
 /**
  * Authored loot source placement loaded from arena config.
  */
-public record ArenaLootSourcePlacement(String id, LootSourceType type, LocationSpec location) {
+public record ArenaLootSourcePlacement(String id, LootSourceType type, LocationSpec location, String tableKey, String tier) {
     public static ArenaLootSourcePlacement from(ConfigurationSection section, String fallbackWorld) {
         LootSourceType type = LootSourceType.valueOf(
                 section.getString("type", "SUPPLY_CRATE").toUpperCase(Locale.ROOT)
@@ -17,7 +17,9 @@ public record ArenaLootSourcePlacement(String id, LootSourceType type, LocationS
         return new ArenaLootSourcePlacement(
                 section.getName(),
                 type,
-                LocationSpec.from(section.getConfigurationSection("location"), fallbackWorld)
+                LocationSpec.from(section.getConfigurationSection("location"), fallbackWorld),
+                section.getString("table", type.configKey()),
+                section.getString("tier", "standard")
         );
     }
 
@@ -32,7 +34,9 @@ public record ArenaLootSourcePlacement(String id, LootSourceType type, LocationS
         return new ArenaLootSourcePlacement(
                 stringValue(values, "id", type.name().toLowerCase(Locale.ROOT)),
                 type,
-                fromLocationMap(locationValues, fallbackWorld)
+                fromLocationMap(locationValues, fallbackWorld),
+                stringValue(values, "table", type.configKey()),
+                stringValue(values, "tier", "standard")
         );
     }
 

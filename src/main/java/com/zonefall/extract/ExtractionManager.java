@@ -23,6 +23,9 @@ public final class ExtractionManager {
     private final Set<String> activeZoneIds = new HashSet<>();
     private final ExtractionActivationMode activationMode;
     private final int activeCount;
+    private final ExtractionRevealMode revealMode;
+    private final int revealSecondsRemaining;
+    private boolean revealed;
     private BukkitTask markerTask;
 
     public ExtractionManager(Plugin plugin, ZonefallConfig config, Arena arena) {
@@ -30,6 +33,8 @@ public final class ExtractionManager {
         this.arena = arena;
         this.activationMode = ExtractionActivationMode.ALL_ACTIVE;
         this.activeCount = 1;
+        this.revealMode = ExtractionRevealMode.ROUND_START;
+        this.revealSecondsRemaining = 0;
         zones.add(new ExtractionZone(
                 "alpha",
                 arena.extractionLocation(),
@@ -39,15 +44,23 @@ public final class ExtractionManager {
     }
 
     public ExtractionManager(Plugin plugin, ZonefallConfig config, Arena arena, List<Location> extractionLocations) {
-        this(plugin, config, arena, extractionLocations, ExtractionActivationMode.ALL_ACTIVE, 1);
+        this(plugin, config, arena, extractionLocations, ExtractionActivationMode.ALL_ACTIVE, 1, ExtractionRevealMode.ROUND_START, 0);
     }
 
     public ExtractionManager(Plugin plugin, ZonefallConfig config, Arena arena, List<Location> extractionLocations,
                              ExtractionActivationMode activationMode, int activeCount) {
+        this(plugin, config, arena, extractionLocations, activationMode, activeCount, ExtractionRevealMode.ROUND_START, 0);
+    }
+
+    public ExtractionManager(Plugin plugin, ZonefallConfig config, Arena arena, List<Location> extractionLocations,
+                             ExtractionActivationMode activationMode, int activeCount,
+                             ExtractionRevealMode revealMode, int revealSecondsRemaining) {
         this.plugin = plugin;
         this.arena = arena;
         this.activationMode = activationMode;
         this.activeCount = Math.max(1, activeCount);
+        this.revealMode = revealMode;
+        this.revealSecondsRemaining = Math.max(0, revealSecondsRemaining);
         if (extractionLocations.isEmpty()) {
             zones.add(new ExtractionZone("alpha", arena.extractionLocation(), config.extractionRadius(), config.extractionVerticalTolerance()));
             return;
@@ -64,6 +77,7 @@ public final class ExtractionManager {
 
     public void start() {
         selectActiveZones();
+        revealed = revealMode == ExtractionRevealMode.ROUND_START;
         plugin.getLogger().info("Extraction zones active: " + describeZones());
         markerTask = plugin.getServer().getScheduler().runTaskTimer(plugin, this::drawMarkers, 1L, 20L);
     }
@@ -76,23 +90,57 @@ public final class ExtractionManager {
     }
 
     public boolean isInsideExtraction(Location location) {
-        return zones.stream().anyMatch(zone -> activeZoneIds.contains(zone.id()) && zone.contains(location));
+        return revealed && zones.stream().anyMatch(zone -> activeZoneIds.contains(zone.id()) && zone.contains(location));
     }
 
     public String describeZones() {
-        return zones.stream().map(zone -> zone.describe() + (activeZoneIds.contains(zone.id()) ? " active" : " inactive")).toList().toString();
+        return zones.stream().map(zone -> zone.describe() + (activeZoneIds.contains(zone.id()) ? " selected" : " inactive")
+                + (revealed && activeZoneIds.contains(zone.id()) ? " revealed" : " hidden")).toList().toString();
     }
 
     public String describeActiveZones() {
+        if (!revealed) {
+            return "hidden";
+        }
         return zones.stream().filter(zone -> activeZoneIds.contains(zone.id())).map(ExtractionZone::describe).toList().toString();
     }
 
     public String describeInactiveZones() {
-        return zones.stream().filter(zone -> !activeZoneIds.contains(zone.id())).map(ExtractionZone::describe).toList().toString();
+        return zones.stream().filter(zone -> !activeZoneIds.contains(zone.id()) || !revealed).map(ExtractionZone::describe).toList().toString();
     }
 
     public List<ExtractionZone> activeZones() {
+        if (!revealed) {
+            return List.of();
+        }
         return zones.stream().filter(zone -> activeZoneIds.contains(zone.id())).toList();
+    }
+
+    public boolean revealed() {
+        return revealed;
+    }
+
+    public String revealState() {
+        return revealed ? "REVEALED" : "PENDING(" + revealMode + ", " + revealSecondsRemaining + "s)";
+    }
+
+    public boolean shouldReveal(int remainingSeconds, boolean finalExtraction) {
+        if (revealed) {
+            return false;
+        }
+        return switch (revealMode) {
+            case ROUND_START -> true;
+            case FINAL_EXTRACTION -> finalExtraction;
+            case CUSTOM_TIME_REMAINING -> remainingSeconds <= revealSecondsRemaining;
+        };
+    }
+
+    public boolean revealNow() {
+        if (revealed) {
+            return false;
+        }
+        revealed = true;
+        return true;
     }
 
     private void selectActiveZones() {
@@ -116,6 +164,9 @@ public final class ExtractionManager {
 
     private void drawMarkers() {
         for (ExtractionZone zone : zones) {
+            if (!revealed) {
+                return;
+            }
             if (!activeZoneIds.contains(zone.id())) {
                 continue;
             }
