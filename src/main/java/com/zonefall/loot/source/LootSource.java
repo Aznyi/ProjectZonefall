@@ -13,13 +13,15 @@ public final class LootSource {
     private final LootSourceType type;
     private final Location location;
     private final Material originalMaterial;
+    private boolean active;
     private boolean consumed;
 
-    public LootSource(UUID id, LootSourceType type, Location location, Material originalMaterial) {
+    public LootSource(UUID id, LootSourceType type, Location location, Material originalMaterial, boolean active) {
         this.id = id;
         this.type = type;
         this.location = location;
         this.originalMaterial = originalMaterial;
+        this.active = active;
     }
 
     public UUID id() {
@@ -42,6 +44,14 @@ public final class LootSource {
         return consumed;
     }
 
+    public boolean active() {
+        return active;
+    }
+
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
     public void markConsumed() {
         consumed = true;
     }
@@ -51,7 +61,7 @@ public final class LootSource {
                 + location.getBlockX() + ","
                 + location.getBlockY() + ","
                 + location.getBlockZ()
+                + (active ? " active" : " inactive")
                 + (consumed ? " consumed" : " available");
     }
 }
-

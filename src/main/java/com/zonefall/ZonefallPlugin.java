@@ -14,6 +14,7 @@ import com.zonefall.stash.StashService;
 import com.zonefall.stash.YamlStashService;
 import com.zonefall.ui.ArenaStatusUi;
 import com.zonefall.ui.JoinPadLabelService;
+import com.zonefall.ui.WorldMarkerLabelService;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -25,6 +26,7 @@ public final class ZonefallPlugin extends JavaPlugin {
     private ZonefallServices services;
     private ArenaStatusUi arenaStatusUi;
     private JoinPadLabelService joinPadLabelService;
+    private WorldMarkerLabelService worldMarkerLabelService;
 
     @Override
     public void onEnable() {
@@ -43,6 +45,7 @@ public final class ZonefallPlugin extends JavaPlugin {
         matchManager = new MatchManager(arenaManager, services, config);
         arenaStatusUi = new ArenaStatusUi(this, arenaManager, config);
         joinPadLabelService = new JoinPadLabelService(this, arenaManager, config);
+        worldMarkerLabelService = new WorldMarkerLabelService(this, arenaManager, config);
 
         ZonefallCommand command = new ZonefallCommand(matchManager);
         PluginCommand pluginCommand = getCommand("zonefall");
@@ -55,6 +58,7 @@ public final class ZonefallPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new MatchListener(matchManager), this);
         arenaStatusUi.start();
         joinPadLabelService.start();
+        worldMarkerLabelService.start();
 
         getLogger().info("Zonefall enabled. Phase 1 prototype ready.");
     }
@@ -69,6 +73,9 @@ public final class ZonefallPlugin extends JavaPlugin {
         }
         if (joinPadLabelService != null) {
             joinPadLabelService.stop();
+        }
+        if (worldMarkerLabelService != null) {
+            worldMarkerLabelService.stop();
         }
         if (services != null) {
             services.stashService().saveAll();

@@ -1,6 +1,7 @@
 package com.zonefall.arena;
 
 import com.zonefall.extract.ExtractionActivationMode;
+import com.zonefall.loot.source.LootActivationMode;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.ArrayList;
@@ -29,6 +30,8 @@ public record ArenaDefinition(
         boolean allowLateJoin,
         double borderStartSize,
         double borderEndSize,
+        LootActivationMode lootActivationMode,
+        int activeLootSourceCount,
         List<ArenaJoinPoint> joinPoints,
         List<ArenaLootSourcePlacement> lootSources
 ) {
@@ -58,6 +61,8 @@ public record ArenaDefinition(
                 section.getBoolean("allow-active-join-window", true),
                 section.getDouble("border-start-size", 140.0),
                 section.getDouble("border-end-size", 35.0),
+                readLootActivationMode(section),
+                section.getInt("loot-active-count", 1),
                 readJoinPoints(section, hubSpawn),
                 readLootSources(section, world)
         );
@@ -68,6 +73,14 @@ public record ArenaDefinition(
             return ExtractionActivationMode.valueOf(section.getString("extraction-activation", "ALL_ACTIVE").toUpperCase(java.util.Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             return ExtractionActivationMode.ALL_ACTIVE;
+        }
+    }
+
+    private static LootActivationMode readLootActivationMode(ConfigurationSection section) {
+        try {
+            return LootActivationMode.valueOf(section.getString("loot-activation", "ALL_ACTIVE").toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return LootActivationMode.ALL_ACTIVE;
         }
     }
 

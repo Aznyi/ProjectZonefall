@@ -22,6 +22,12 @@ ui:
   join-pad-labels:
     enabled: true
     height: 2.2
+  extraction-labels:
+    enabled: true
+    height: 2.4
+  spectator-labels:
+    enabled: true
+    height: 2.4
 
 spectator:
   allow-flight: true
@@ -48,6 +54,8 @@ arenas:
     extraction: { x: 404.5, y: 67.0, z: 140.5 }
     extraction-activation: RANDOM_ONE
     extraction-active-count: 1
+    loot-activation: RANDOM_TWO
+    loot-active-count: 2
     extractions:
       - { x: 404.5, y: 67.0, z: 140.5 }
       - { x: 352.5, y: 67.0, z: 132.5 }
@@ -64,11 +72,14 @@ arenas:
       min: { x: 303, y: 0, z: 65 }
       max: { x: 453, y: 320, z: 215 }
     loot-sources:
-      - type: SUPPLY_CRATE
+      - id: yard-crate-a
+        type: SUPPLY_CRATE
         location: { x: 386.5, y: 67.0, z: 144.5 }
-      - type: SCRAP_CACHE
+      - id: yard-scrap-a
+        type: SCRAP_CACHE
         location: { x: 371.5, y: 67.0, z: 146.5 }
-      - type: ORE_NODE
+      - id: yard-ore-a
+        type: ORE_NODE
         location: { x: 382.5, y: 67.0, z: 131.5 }
   hollow:
     name: Iron Hollow
@@ -85,6 +96,8 @@ arenas:
     extraction: { x: 564.5, y: 67.0, z: 140.5 }
     extraction-activation: RANDOM_TWO
     extraction-active-count: 2
+    loot-activation: RANDOM_TWO
+    loot-active-count: 2
     extractions:
       - { x: 564.5, y: 67.0, z: 140.5 }
       - { x: 512.5, y: 67.0, z: 132.5 }
@@ -101,11 +114,14 @@ arenas:
       min: { x: 463, y: 0, z: 65 }
       max: { x: 613, y: 320, z: 215 }
     loot-sources:
-      - type: SUPPLY_CRATE
+      - id: hollow-crate-a
+        type: SUPPLY_CRATE
         location: { x: 546.5, y: 67.0, z: 144.5 }
-      - type: SCRAP_CACHE
+      - id: hollow-scrap-a
+        type: SCRAP_CACHE
         location: { x: 531.5, y: 67.0, z: 146.5 }
-      - type: ORE_NODE
+      - id: hollow-ore-a
+        type: ORE_NODE
         location: { x: 542.5, y: 67.0, z: 131.5 }
   glasswatch:
     name: Glasswatch
@@ -122,6 +138,8 @@ arenas:
     extraction: { x: 244.5, y: 67.0, z: 140.5 }
     extraction-activation: ALL_ACTIVE
     extraction-active-count: 1
+    loot-activation: ALL_ACTIVE
+    loot-active-count: 3
     extractions:
       - { x: 244.5, y: 67.0, z: 140.5 }
       - { x: 192.5, y: 67.0, z: 132.5 }
@@ -138,11 +156,14 @@ arenas:
       min: { x: 143, y: 0, z: 65 }
       max: { x: 293, y: 320, z: 215 }
     loot-sources:
-      - type: SUPPLY_CRATE
+      - id: glasswatch-crate-a
+        type: SUPPLY_CRATE
         location: { x: 226.5, y: 67.0, z: 144.5 }
-      - type: SCRAP_CACHE
+      - id: glasswatch-scrap-a
+        type: SCRAP_CACHE
         location: { x: 211.5, y: 67.0, z: 146.5 }
-      - type: ORE_NODE
+      - id: glasswatch-ore-a
+        type: ORE_NODE
         location: { x: 222.5, y: 67.0, z: 131.5 }
 
 pve:

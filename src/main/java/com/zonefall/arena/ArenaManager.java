@@ -20,8 +20,9 @@ public final class ArenaManager {
     private final Map<String, ArenaController> arenas = new LinkedHashMap<>();
 
     public ArenaManager(Plugin plugin, ZonefallConfig config, ZonefallServices services) {
+        ArenaAnnouncementService announcements = new ArenaAnnouncementService();
         for (ArenaDefinition definition : config.arenas()) {
-            arenas.put(definition.id().toLowerCase(), new ArenaController(plugin, config, services, definition));
+            arenas.put(definition.id().toLowerCase(), new ArenaController(plugin, config, services, definition, announcements));
         }
         plugin.getLogger().info("Loaded " + arenas.size() + " Zonefall arenas.");
     }

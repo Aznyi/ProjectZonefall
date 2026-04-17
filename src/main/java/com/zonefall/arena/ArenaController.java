@@ -5,6 +5,7 @@ import com.zonefall.core.ZonefallServices;
 import com.zonefall.extract.ExtractionHoldResult;
 import com.zonefall.extract.ExtractionHoldTracker;
 import com.zonefall.extract.ExtractionManager;
+import com.zonefall.extract.ExtractionZone;
 import com.zonefall.loot.DroppedLootContainer;
 import com.zonefall.loot.LootBundle;
 import com.zonefall.loot.LootType;
@@ -45,6 +46,7 @@ public final class ArenaController implements ActivePlayerProvider {
     private final Plugin plugin;
     private final ZonefallConfig config;
     private final ZonefallServices services;
+    private final ArenaAnnouncementService announcements;
     private final ArenaDefinition definition;
     private final Arena runtimeArena;
     private final ZoneController zoneController;
@@ -62,10 +64,12 @@ public final class ArenaController implements ActivePlayerProvider {
     private int countdownRemaining;
     private int elapsedSeconds;
 
-    public ArenaController(Plugin plugin, ZonefallConfig config, ZonefallServices services, ArenaDefinition definition) {
+    public ArenaController(Plugin plugin, ZonefallConfig config, ZonefallServices services,
+                           ArenaDefinition definition, ArenaAnnouncementService announcements) {
         this.plugin = plugin;
         this.config = config;
         this.services = services;
+        this.announcements = announcements;
         this.definition = definition;
         Location center = definition.center().toLocation();
         this.runtimeArena = new Arena(definition.id(), center.getWorld(), center, definition.extraction().toLocation());
@@ -326,6 +330,10 @@ public final class ArenaController implements ActivePlayerProvider {
         return definition.spectatorPoint().toLocation();
     }
 
+    public List<ExtractionZone> activeExtractionZones() {
+        return extractionManager.activeZones();
+    }
+
     public String statusLine() {
         return id() + " " + state
                 + " players=" + participants.size()
@@ -335,7 +343,7 @@ public final class ArenaController implements ActivePlayerProvider {
                 + " remaining=" + remainingSeconds() + "s"
                 + " join=" + (joinWindowOpen() ? "open" : "closed")
                 + " extracts=" + extractionManager.describeActiveZones()
-                + " lootSources=" + lootSourceManager.openedCount() + "/" + lootSourceManager.sourceCount()
+                + " loot=" + lootSourceManager.activeCount() + " active/" + lootSourceManager.inactiveCount() + " inactive"
                 + " drops=" + lootTracker.describeDrops();
     }
 
@@ -363,6 +371,9 @@ public final class ArenaController implements ActivePlayerProvider {
                 + " inactiveExtractions=" + extractionManager.describeInactiveZones()
                 + " joinPoints=" + joinPoints
                 + " lootPlacements=" + definition.lootSources().size()
+                + " activeLoot=" + lootSourceManager.activeCount()
+                + " inactiveLoot=" + lootSourceManager.inactiveCount()
+                + " lootMode=" + definition.lootActivationMode()
                 + " spectatorPoint=" + spectatorLocation().getBlockX() + "," + spectatorLocation().getBlockY() + "," + spectatorLocation().getBlockZ();
     }
 
@@ -377,6 +388,7 @@ public final class ArenaController implements ActivePlayerProvider {
         elapsedSeconds = 0;
         countdownRemaining = definition.countdownSeconds();
         plugin.getLogger().info("Arena " + id() + " is OPEN.");
+        announcements.announce(this, "Open for runners.");
     }
 
     private void startCountdown() {
@@ -384,6 +396,7 @@ public final class ArenaController implements ActivePlayerProvider {
         countdownRemaining = definition.countdownSeconds();
         ensureTicker();
         broadcast("Arena starts in " + countdownRemaining + " seconds.");
+        announcements.announce(this, "Countdown started.");
     }
 
     private void activate() {
@@ -392,8 +405,13 @@ public final class ArenaController implements ActivePlayerProvider {
         zoneController.start();
         extractionManager.start();
         pvePressureManager.start();
-        lootSourceManager.registerPlacements(definition.lootSources());
+        lootSourceManager.registerPlacements(
+                definition.lootSources(),
+                definition.lootActivationMode(),
+                definition.activeLootSourceCount()
+        );
         broadcast(displayName() + " is active. Early join window: " + definition.joinWindowSeconds() + "s.");
+        announcements.announce(this, "Round active.");
     }
 
     private void tickCountdown() {
@@ -419,6 +437,7 @@ public final class ArenaController implements ActivePlayerProvider {
                 && definition.roundDurationSeconds() - elapsedSeconds <= config.finalExtractionSeconds()) {
             state = ArenaState.FINAL_EXTRACTION;
             broadcast("Final extraction window. Get out now.");
+            announcements.announce(this, "Final extraction started.");
             for (UUID playerId : participants) {
                 Player player = Bukkit.getPlayer(playerId);
                 if (player != null) {
@@ -493,6 +512,7 @@ public final class ArenaController implements ActivePlayerProvider {
             }
         }
         plugin.getLogger().info("Arena " + id() + " closing. Extracted loot=" + extractedLootSummary());
+        announcements.announce(this, "Round closed. Resetting.");
         resetRound();
     }
 

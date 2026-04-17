@@ -44,7 +44,11 @@ public record ZonefallConfig(
         boolean spectatorPreventDamage,
         boolean spectatorPreventHunger,
         boolean joinPadLabelsEnabled,
-        double joinPadLabelHeight
+        double joinPadLabelHeight,
+        boolean extractionLabelsEnabled,
+        double extractionLabelHeight,
+        boolean spectatorLabelsEnabled,
+        double spectatorLabelHeight
 ) {
     public static ZonefallConfig from(FileConfiguration config) {
         return new ZonefallConfig(
@@ -73,7 +77,11 @@ public record ZonefallConfig(
                 config.getBoolean("spectator.prevent-damage", true),
                 config.getBoolean("spectator.prevent-hunger", true),
                 config.getBoolean("ui.join-pad-labels.enabled", true),
-                config.getDouble("ui.join-pad-labels.height", 2.2)
+                config.getDouble("ui.join-pad-labels.height", 2.2),
+                config.getBoolean("ui.extraction-labels.enabled", true),
+                config.getDouble("ui.extraction-labels.height", 2.4),
+                config.getBoolean("ui.spectator-labels.enabled", true),
+                config.getDouble("ui.spectator-labels.height", 2.4)
         );
     }
 
@@ -180,6 +188,8 @@ public record ZonefallConfig(
                 true,
                 140.0,
                 35.0,
+                com.zonefall.loot.source.LootActivationMode.ALL_ACTIVE,
+                1,
                 List.of(new com.zonefall.arena.ArenaJoinPoint(
                         id + "-join",
                         new LocationSpec(world, offsetX + 0.5, hubSpawn.y(), hubSpawn.z() + 6.0, 0, 0),

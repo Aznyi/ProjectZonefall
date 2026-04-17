@@ -91,6 +91,10 @@ public final class ExtractionManager {
         return zones.stream().filter(zone -> !activeZoneIds.contains(zone.id())).map(ExtractionZone::describe).toList().toString();
     }
 
+    public List<ExtractionZone> activeZones() {
+        return zones.stream().filter(zone -> activeZoneIds.contains(zone.id())).toList();
+    }
+
     private void selectActiveZones() {
         activeZoneIds.clear();
         if (zones.isEmpty()) {
