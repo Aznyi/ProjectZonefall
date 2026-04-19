@@ -9,6 +9,7 @@ import com.zonefall.loot.LootType;
 import com.zonefall.loot.source.LootSourceType;
 import com.zonefall.util.Messages;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -231,6 +232,10 @@ public final class MatchManager {
             arenaManager.findJoinPoint(player.getLocation()).ifPresent(arena -> arena.join(player));
         }
         arenaManager.handleMove(player);
+    }
+
+    public Optional<Location> stationaryBarrierCorrection(Player player, Location from, Location to) {
+        return arenaManager.stationaryBarrierCorrection(player, from, to);
     }
 
     public void handleDeath(Player player) {

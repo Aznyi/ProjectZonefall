@@ -70,6 +70,11 @@ public final class ArenaManager {
         findForPlayer(player.getUniqueId()).ifPresent(arena -> arena.handleMove(player));
     }
 
+    public Optional<Location> stationaryBarrierCorrection(Player player, Location from, Location to) {
+        return findForPlayer(player.getUniqueId())
+                .flatMap(arena -> arena.stationaryBarrierCorrection(player, from, to));
+    }
+
     public void handleDeath(Player player) {
         findForPlayer(player.getUniqueId()).ifPresent(arena -> arena.handleDeath(player));
     }

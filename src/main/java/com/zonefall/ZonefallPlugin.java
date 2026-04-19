@@ -6,6 +6,7 @@ import com.zonefall.core.ZonefallConfig;
 import com.zonefall.core.ZonefallServices;
 import com.zonefall.crafting.NoopCraftingService;
 import com.zonefall.extract.ExtractionListener;
+import com.zonefall.match.ArenaMovementListener;
 import com.zonefall.match.MatchListener;
 import com.zonefall.match.MatchManager;
 import com.zonefall.profile.InMemoryProfileService;
@@ -56,6 +57,7 @@ public final class ZonefallPlugin extends JavaPlugin {
             pluginCommand.setTabCompleter(command);
         }
 
+        getServer().getPluginManager().registerEvents(new ArenaMovementListener(matchManager), this);
         getServer().getPluginManager().registerEvents(new ExtractionListener(matchManager), this);
         getServer().getPluginManager().registerEvents(new MatchListener(matchManager), this);
         arenaStatusUi.start();

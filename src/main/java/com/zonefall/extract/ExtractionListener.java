@@ -28,4 +28,3 @@ public final class ExtractionListener implements Listener {
         matchManager.handleMove(event.getPlayer());
     }
 }
-
