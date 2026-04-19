@@ -94,6 +94,7 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Messages.info("/zonefall arena status [id]"));
         sender.sendMessage(Messages.info("/zonefall arena rolls <id>"));
         sender.sendMessage(Messages.info("/zonefall arena debug <id>"));
+        sender.sendMessage(Messages.info("/zonefall arena objectives <id>"));
         sender.sendMessage(Messages.info("/zonefall arena forcestart <id>"));
         sender.sendMessage(Messages.info("/zonefall arena reset <id>"));
         sender.sendMessage(Messages.info("/zonefall arena spectate <id>"));
@@ -146,6 +147,13 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
                     return;
                 }
                 matchManager.arenaDebug(sender, args[2]);
+            }
+            case "objectives" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(Messages.error("Usage: /" + label + " arena objectives <id>"));
+                    return;
+                }
+                matchManager.arenaObjectives(sender, args[2]);
             }
             case "forcestart" -> {
                 if (args.length < 3) {

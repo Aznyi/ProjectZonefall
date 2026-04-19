@@ -6,6 +6,7 @@ import com.zonefall.loot.LootType;
 import com.zonefall.loot.source.LootSourceType;
 import com.zonefall.util.Messages;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -92,6 +93,16 @@ public final class MatchManager {
 
     public void arenaDebug(CommandSender sender, String id) {
         arenaRolls(sender, id);
+        if (sender instanceof Player player) {
+            sender.sendMessage(Messages.info("Block break eligibility here: " + canBuild(player, player.getLocation())));
+        }
+    }
+
+    public void arenaObjectives(CommandSender sender, String id) {
+        ArenaController arena = requireArena(sender, id);
+        if (arena != null) {
+            sender.sendMessage(Messages.info(arena.objectivesLine()));
+        }
     }
 
     public void forceStart(CommandSender sender, String id) {
@@ -242,8 +253,12 @@ public final class MatchManager {
     }
 
     public boolean canBuild(Player player, org.bukkit.Location location) {
-        Optional<ArenaController> arena = arenaManager.findProtecting(location);
-        return arena.isEmpty();
+        if (player.isOp()) {
+            return true;
+        }
+        return arenaManager.findForPlayer(player.getUniqueId())
+                .map(arena -> arena.canParticipantBuild(player, location))
+                .orElse(false);
     }
 
     public boolean canSpectatorInteract(Player player, org.bukkit.Location location) {
@@ -276,6 +291,9 @@ public final class MatchManager {
             player.setFoodLevel(20);
             player.setSaturation(20.0f);
         } else if (!isArenaParticipant(player) && player.getAllowFlight()) {
+            if (player.isOp() || player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR) {
+                return;
+            }
             player.setFlying(false);
             player.setAllowFlight(false);
         }

@@ -13,8 +13,11 @@ import com.zonefall.loot.MatchLootTracker;
 import com.zonefall.loot.source.LootSource;
 import com.zonefall.loot.source.LootSourceManager;
 import com.zonefall.loot.source.LootSourceType;
+import com.zonefall.objective.ArenaObjectiveManager;
+import com.zonefall.objective.ObjectiveEffectExecutor;
+import com.zonefall.objective.ObjectiveMarker;
 import com.zonefall.pve.ActivePlayerProvider;
-import com.zonefall.pve.PvePressureManager;
+import com.zonefall.pve.ArenaThreatDirector;
 import com.zonefall.util.Messages;
 import com.zonefall.zone.ZoneController;
 import org.bukkit.Bukkit;
@@ -52,8 +55,10 @@ public final class ArenaController implements ActivePlayerProvider {
     private final ZoneController zoneController;
     private final ExtractionManager extractionManager;
     private final ExtractionHoldTracker extractionHoldTracker = new ExtractionHoldTracker();
-    private final PvePressureManager pvePressureManager;
+    private final ArenaThreatDirector threatDirector;
     private final LootSourceManager lootSourceManager;
+    private final ArenaObjectiveManager objectiveManager;
+    private final ObjectiveEffectExecutor objectiveEffectExecutor;
     private MatchLootTracker lootTracker;
     private final Set<UUID> participants = new LinkedHashSet<>();
     private final Set<UUID> extractedPlayers = new LinkedHashSet<>();
@@ -79,7 +84,8 @@ public final class ArenaController implements ActivePlayerProvider {
                 runtimeArena,
                 definition.borderStartSize(),
                 definition.borderEndSize(),
-                definition.roundDurationSeconds()
+                definition.shrinkStartDelaySeconds(),
+                definition.shrinkDurationSeconds()
         );
         this.extractionManager = new ExtractionManager(
                 plugin,
@@ -91,8 +97,17 @@ public final class ArenaController implements ActivePlayerProvider {
                 definition.extractionRevealMode(),
                 definition.extractionRevealSecondsRemaining()
         );
-        this.pvePressureManager = new PvePressureManager(plugin, config, this);
+        this.threatDirector = new ArenaThreatDirector(plugin, config, definition, this);
         this.lootSourceManager = new LootSourceManager(plugin, config, runtimeArena);
+        this.objectiveManager = new ArenaObjectiveManager(
+                plugin,
+                config,
+                runtimeArena,
+                definition.objectives(),
+                definition.objectiveActivationMode(),
+                definition.activeHighValueObjectiveCount()
+        );
+        this.objectiveEffectExecutor = new ObjectiveEffectExecutor(extractionManager, lootSourceManager);
         this.lootTracker = new MatchLootTracker(plugin);
         open();
     }
@@ -177,9 +192,11 @@ public final class ArenaController implements ActivePlayerProvider {
         lootTracker.ensurePlayer(player.getUniqueId());
         services.profileService().loadProfile(player.getUniqueId());
         player.teleport(definition.joinSpawn().toLocation());
-        player.setGameMode(GameMode.SURVIVAL);
-        player.setAllowFlight(false);
-        player.setFlying(false);
+        if (!player.isOp()) {
+            player.setGameMode(GameMode.SURVIVAL);
+            player.setAllowFlight(false);
+            player.setFlying(false);
+        }
         player.sendMessage(Messages.ok("Entered " + displayName() + ". Extract before the timer ends."));
         if (state == ArenaState.OPEN) {
             startCountdown();
@@ -262,7 +279,23 @@ public final class ArenaController implements ActivePlayerProvider {
         if (!isActiveParticipant(player.getUniqueId())) {
             return;
         }
-        lootSourceManager.handleInteract(player, block).ifPresent(loot -> lootTracker.grant(player.getUniqueId(), loot));
+        if (objectiveManager.handleInteract(player, block, this::announceObjective, this::applyObjectiveEffects)
+                .map(loot -> {
+                    lootTracker.grant(player.getUniqueId(), loot);
+                    return true;
+                })
+                .orElse(false)) {
+            return;
+        }
+        lootSourceManager.handleInteract(player, block).ifPresent(loot -> {
+            lootTracker.grant(player.getUniqueId(), loot);
+            objectiveManager.onLootSourceOpened(
+                    player,
+                    reward -> lootTracker.grant(player.getUniqueId(), reward),
+                    this::announceObjective,
+                    this::applyObjectiveEffects
+            );
+        });
     }
 
     public boolean placeLoot(Player player, LootSourceType type) {
@@ -336,6 +369,10 @@ public final class ArenaController implements ActivePlayerProvider {
         return extractionManager.activeZones();
     }
 
+    public List<ObjectiveMarker> objectiveMarkers() {
+        return objectiveManager.markers();
+    }
+
     public String statusLine() {
         return id() + " " + state
                 + " players=" + participants.size()
@@ -343,10 +380,12 @@ public final class ArenaController implements ActivePlayerProvider {
                 + " extracted=" + extractedPlayers.size()
                 + " eliminated=" + eliminatedPlayers.size()
                 + " remaining=" + remainingSeconds() + "s"
+                + " arenaSize=" + definition.playableRegion().describeSize()
                 + " join=" + (joinWindowOpen() ? "open" : "closed")
                 + " extractionReveal=" + extractionManager.revealState()
                 + " extracts=" + extractionManager.describeActiveZones()
                 + " loot=" + lootSourceManager.activeCount() + " active/" + lootSourceManager.inactiveCount() + " inactive"
+                + " objectives=" + objectiveManager.statusSummary()
                 + " drops=" + lootTracker.describeDrops();
     }
 
@@ -374,24 +413,40 @@ public final class ArenaController implements ActivePlayerProvider {
                 + " inactiveExtractions=" + extractionManager.describeInactiveZones()
                 + " extractionMode=" + definition.extractionActivationMode()
                 + " reveal=" + extractionManager.revealState()
+                + " timing=round:" + definition.roundDurationSeconds() + "s shrinkDelay:"
+                + definition.shrinkStartDelaySeconds() + "s shrinkDuration:" + definition.shrinkDurationSeconds() + "s"
                 + " joinPoints=" + joinPoints
                 + " lootPlacements=" + definition.lootSources().size()
                 + " activeLoot=" + lootSourceManager.activeCount()
                 + " inactiveLoot=" + lootSourceManager.inactiveCount()
                 + " lootMode=" + definition.lootActivationMode()
+                + " objectiveMode=" + objectiveManager.activationSummary()
+                + " objectives=" + objectiveManager.statusSummary()
                 + " spectatorPoint=" + spectatorLocation().getBlockX() + "," + spectatorLocation().getBlockY() + "," + spectatorLocation().getBlockZ();
     }
 
     public String debugLine() {
         return infoLine()
                 + " lootDebug=" + lootSourceManager.debugSummary()
+                + " objectiveDebug=" + objectiveManager.debugSummary()
+                + " objectiveEffects=" + objectiveEffectExecutor.debugSummary()
+                + " zoneDebug=" + zoneController.debugSummary()
+                + " threatDebug=" + threatDirector.debugSummary()
                 + " extractionDebug=" + extractionManager.describeZones();
+    }
+
+    public String objectivesLine() {
+        return id() + " objectives=" + objectiveManager.debugSummary();
     }
 
     public Map<UUID, String> extractedLootSummary() {
         Map<UUID, String> result = new LinkedHashMap<>();
         lootTracker.extractedLootSnapshot().forEach((playerId, loot) -> result.put(playerId, loot.describe()));
         return result;
+    }
+
+    public boolean canParticipantBuild(Player player, Location location) {
+        return isActiveParticipant(player.getUniqueId()) && definition.playableRegion().contains(location);
     }
 
     private void open() {
@@ -415,16 +470,21 @@ public final class ArenaController implements ActivePlayerProvider {
         elapsedSeconds = 0;
         zoneController.start();
         extractionManager.start();
-        pvePressureManager.start();
+        threatDirector.start();
         lootSourceManager.registerPlacements(
                 definition.lootSources(),
                 definition.lootActivationMode(),
                 definition.activeLootSourceCount()
         );
+        objectiveEffectExecutor.reset();
+        objectiveManager.startRound();
         broadcast(displayName() + " is active. Early join window: " + definition.joinWindowSeconds() + "s.");
         announcements.announce(this, "Round active.");
         if (extractionManager.revealed()) {
             announcements.announce(this, "Extraction routes revealed.");
+        }
+        if (!objectiveManager.revealedObjectiveIds().equals("none")) {
+            announcements.announce(this, "Objectives revealed: " + objectiveManager.revealedObjectiveIds() + ".");
         }
     }
 
@@ -442,11 +502,13 @@ public final class ArenaController implements ActivePlayerProvider {
     private void tickRound() {
         elapsedSeconds++;
         zoneController.tick(elapsedSeconds);
-        pvePressureManager.tick(elapsedSeconds);
+        threatDirector.tick(elapsedSeconds);
         lootTracker.drawDropMarkers();
         lootSourceManager.drawMarkers();
+        objectiveManager.drawMarkers();
         tickExtractionHolds();
         revealExtractionIfReady();
+        tickObjectives();
 
         if (state == ArenaState.ACTIVE
                 && definition.roundDurationSeconds() - elapsedSeconds <= config.finalExtractionSeconds()) {
@@ -475,6 +537,12 @@ public final class ArenaController implements ActivePlayerProvider {
         }
     }
 
+    private void tickObjectives() {
+        boolean finalPhase = state == ArenaState.FINAL_EXTRACTION
+                || definition.roundDurationSeconds() - elapsedSeconds <= config.finalExtractionSeconds();
+        objectiveManager.tick(remainingSeconds(), finalPhase, this::announceObjective);
+    }
+
     private void tickExtractionHolds() {
         for (UUID playerId : Set.copyOf(participants)) {
             if (!isActiveParticipant(playerId)) {
@@ -495,11 +563,27 @@ public final class ArenaController implements ActivePlayerProvider {
 
     private void completeExtraction(Player player) {
         extractedPlayers.add(player.getUniqueId());
+        applyExtractionBonus(player);
         LootBundle extracted = lootTracker.extract(player.getUniqueId());
         services.stashService().deposit(player.getUniqueId(), extracted);
         player.teleport(definition.hubReturn().toLocation());
         broadcast(player.getName() + " extracted with loot: " + extracted.describe() + ".");
         checkEmptyReset();
+    }
+
+    private void applyExtractionBonus(Player player) {
+        double multiplier = objectiveEffectExecutor.extractBonusMultiplier();
+        if (multiplier <= 1.0) {
+            return;
+        }
+        LootBundle bonus = lootTracker.carriedLoot(player.getUniqueId()).bonusForMultiplier(multiplier);
+        if (bonus.isEmpty()) {
+            return;
+        }
+        lootTracker.grant(player.getUniqueId(), bonus);
+        player.sendMessage(Messages.ok("Objective extraction bonus x"
+                + String.format(java.util.Locale.ROOT, "%.2f", multiplier)
+                + " added: " + bonus.describe() + "."));
     }
 
     private void pickupDrops(Player player) {
@@ -544,7 +628,9 @@ public final class ArenaController implements ActivePlayerProvider {
     private void resetRound() {
         state = ArenaState.RESETTING;
         cancelTick();
-        pvePressureManager.stop();
+        threatDirector.stop();
+        objectiveManager.stop();
+        objectiveEffectExecutor.reset();
         extractionManager.stop();
         lootSourceManager.stop();
         zoneController.stop();
@@ -600,6 +686,24 @@ public final class ArenaController implements ActivePlayerProvider {
             if (player != null) {
                 player.sendMessage(formatted);
             }
+        }
+    }
+
+    private void announceObjective(String message) {
+        broadcast(message);
+        announcements.announce(this, message);
+        for (UUID playerId : participants) {
+            Player player = Bukkit.getPlayer(playerId);
+            if (player != null) {
+                player.playSound(player.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 0.7f, 1.3f);
+            }
+        }
+    }
+
+    private void applyObjectiveEffects(com.zonefall.objective.ObjectiveDefinition definition) {
+        for (String message : objectiveEffectExecutor.apply(definition)) {
+            broadcast(message);
+            announcements.announce(this, message);
         }
     }
 }

@@ -165,6 +165,18 @@ public final class LootSourceManager {
         return sources.stream().filter(source -> !source.active()).map(LootSource::describe).toList().toString();
     }
 
+    public Optional<String> activateBonusSource() {
+        for (LootSource source : sources) {
+            if (source.active() || source.consumed()) {
+                continue;
+            }
+            source.setActive(true);
+            source.location().getBlock().setType(source.type().markerMaterial());
+            return Optional.of(source.describe());
+        }
+        return Optional.empty();
+    }
+
     public String describe() {
         if (sources.isEmpty()) {
             return "none";

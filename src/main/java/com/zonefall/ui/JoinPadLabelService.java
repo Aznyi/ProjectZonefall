@@ -13,11 +13,15 @@ import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * Renders lightweight floating labels above hub join pads using marker armor stands.
  */
 public final class JoinPadLabelService {
+    private static final String LABEL_TAG = "zonefall_join_pad_label";
+    private static final String LABEL_KEY_PREFIX = "zonefall_join_pad:";
+
     private final Plugin plugin;
     private final ArenaManager arenaManager;
     private final ZonefallConfig config;
@@ -34,6 +38,7 @@ public final class JoinPadLabelService {
         if (!config.joinPadLabelsEnabled() || task != null) {
             return;
         }
+        cleanupExistingLabels();
         task = plugin.getServer().getScheduler().runTaskTimer(plugin, this::refresh, 20L, 40L);
     }
 
@@ -56,32 +61,81 @@ public final class JoinPadLabelService {
                 String key = arena.id() + ":" + joinPoint.id();
                 ArmorStand label = labels.get(key);
                 if (label == null || !label.isValid()) {
-                    label = spawnLabel(joinPoint);
+                    label = spawnLabel(key, joinPoint);
                     labels.put(key, label);
                 }
+                label.teleport(labelLocation(joinPoint));
                 label.customName(Component.text(labelText(arena)));
+                pruneDuplicateLabels(key, joinPoint, label.getUniqueId());
             }
         }
     }
 
-    private ArmorStand spawnLabel(ArenaJoinPoint joinPoint) {
-        Location location = joinPoint.location().toLocation().clone().add(0, config.joinPadLabelHeight(), 0);
+    private ArmorStand spawnLabel(String key, ArenaJoinPoint joinPoint) {
+        Location location = labelLocation(joinPoint);
         ArmorStand stand = (ArmorStand) location.getWorld().spawnEntity(location, EntityType.ARMOR_STAND);
         stand.setInvisible(true);
         stand.setMarker(true);
         stand.setGravity(false);
         stand.setPersistent(false);
+        stand.addScoreboardTag(LABEL_TAG);
+        stand.addScoreboardTag(LABEL_KEY_PREFIX + key);
         stand.customName(Component.text("Zonefall"));
         stand.setCustomNameVisible(true);
         return stand;
     }
 
+    private Location labelLocation(ArenaJoinPoint joinPoint) {
+        return joinPoint.location().toLocation().clone().add(
+                joinPoint.labelOffsetX(),
+                config.joinPadLabelHeight() + joinPoint.labelOffsetY(),
+                joinPoint.labelOffsetZ()
+        );
+    }
+
+    private void cleanupExistingLabels() {
+        for (ArenaController arena : arenaManager.arenas()) {
+            for (ArenaJoinPoint joinPoint : arena.definition().joinPoints()) {
+                Location center = labelLocation(joinPoint);
+                for (ArmorStand stand : center.getWorld().getNearbyEntitiesByType(ArmorStand.class, center, 16.0)) {
+                    if (isZonefallJoinLabel(stand)) {
+                        stand.remove();
+                    }
+                }
+            }
+        }
+    }
+
+    private void pruneDuplicateLabels(String key, ArenaJoinPoint joinPoint, UUID currentLabelId) {
+        Location center = labelLocation(joinPoint);
+        for (ArmorStand stand : center.getWorld().getNearbyEntitiesByType(ArmorStand.class, center, 16.0)) {
+            if (stand.getUniqueId().equals(currentLabelId)) {
+                continue;
+            }
+            if (isLabelForKey(stand, key)) {
+                stand.remove();
+            }
+        }
+    }
+
+    private boolean isZonefallJoinLabel(ArmorStand stand) {
+        return stand.getScoreboardTags().contains(LABEL_TAG);
+    }
+
+    private boolean isLabelForKey(ArmorStand stand, String key) {
+        return stand.getScoreboardTags().contains(LABEL_KEY_PREFIX + key);
+    }
+
     private String labelText(ArenaController arena) {
+        String join = arena.joinWindowOpen() ? "OPEN" : "CLOSED";
+        if (arena.remainingSeconds() > 0) {
+            return arena.displayName()
+                    + " | " + arena.state()
+                    + " | " + arena.remainingSeconds() + "s"
+                    + " | " + arena.activePlayerCount() + "p";
+        }
         return arena.displayName()
-                + " | " + arena.state()
-                + " | " + arena.remainingSeconds() + "s"
-                + " | " + arena.activePlayerCount() + "p"
-                + " | " + (arena.joinWindowOpen() ? "JOIN OPEN" : "CLOSED");
+                + " | " + join
+                + " | " + arena.activePlayerCount() + "p";
     }
 }
-

@@ -41,5 +41,16 @@ public record CuboidRegion(String worldName, int minX, int minY, int minZ, int m
                 && location.getBlockZ() >= minZ
                 && location.getBlockZ() <= maxZ;
     }
-}
 
+    public int width() {
+        return maxX - minX + 1;
+    }
+
+    public int depth() {
+        return maxZ - minZ + 1;
+    }
+
+    public String describeSize() {
+        return width() + "x" + depth();
+    }
+}

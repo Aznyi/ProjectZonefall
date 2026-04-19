@@ -22,6 +22,7 @@ public final class ArenaManager {
     public ArenaManager(Plugin plugin, ZonefallConfig config, ZonefallServices services) {
         ArenaAnnouncementService announcements = new ArenaAnnouncementService();
         for (ArenaDefinition definition : config.arenas()) {
+            ArenaValidator.validate(plugin, config, definition);
             arenas.put(definition.id().toLowerCase(), new ArenaController(plugin, config, services, definition, announcements));
         }
         plugin.getLogger().info("Loaded " + arenas.size() + " Zonefall arenas.");

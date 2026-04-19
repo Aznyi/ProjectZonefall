@@ -10,7 +10,6 @@ import org.bukkit.plugin.Plugin;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 /**
  * Lightweight player-facing arena status display.
@@ -46,16 +45,9 @@ public final class ArenaStatusUi {
         }
         for (Player player : Bukkit.getOnlinePlayers()) {
             Optional<ArenaController> activeArena = arenaManager.findForPlayer(player.getUniqueId());
-            String text = activeArena
-                    .map(arena -> arena.playerStatusLine(player))
-                    .orElseGet(this::hubStatusLine);
-            player.sendActionBar(Component.text(text));
+            player.sendActionBar(activeArena
+                    .map(arena -> Component.text(arena.playerStatusLine(player)))
+                    .orElse(Component.empty()));
         }
-    }
-
-    private String hubStatusLine() {
-        return arenaManager.arenas().stream()
-                .map(arena -> arena.id() + ":" + arena.state() + " " + arena.activePlayerCount() + "p")
-                .collect(Collectors.joining(" | "));
     }
 }

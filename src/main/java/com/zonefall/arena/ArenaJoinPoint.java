@@ -6,12 +6,16 @@ import org.bukkit.configuration.ConfigurationSection;
 /**
  * Hub-side physical trigger for joining an arena.
  */
-public record ArenaJoinPoint(String id, LocationSpec location, double radius) {
+public record ArenaJoinPoint(String id, LocationSpec location, double radius,
+                             double labelOffsetX, double labelOffsetY, double labelOffsetZ) {
     public static ArenaJoinPoint from(String id, ConfigurationSection section, LocationSpec hubSpawn) {
         return new ArenaJoinPoint(
                 id,
                 LocationSpec.from(section, hubSpawn.worldName()),
-                section.getDouble("radius", 1.5)
+                section.getDouble("radius", 1.5),
+                section.getDouble("label-offset.x", 0.0),
+                section.getDouble("label-offset.y", 0.0),
+                section.getDouble("label-offset.z", 0.0)
         );
     }
 
@@ -26,10 +30,8 @@ public record ArenaJoinPoint(String id, LocationSpec location, double radius) {
     public String describe() {
         Location loc = location.toLocation();
         return id + "@"
-                + loc.getBlockX() + ","
-                + loc.getBlockY() + ","
-                + loc.getBlockZ()
-                + " r=" + radius;
+                + loc.getBlockX() + "," + loc.getBlockY() + "," + loc.getBlockZ()
+                + " r=" + radius
+                + " labelOffset=" + labelOffsetX + "," + labelOffsetY + "," + labelOffsetZ;
     }
 }
-

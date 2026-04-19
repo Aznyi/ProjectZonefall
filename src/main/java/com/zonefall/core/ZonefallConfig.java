@@ -39,8 +39,12 @@ public record ZonefallConfig(
         Map<LootSourceType, WeightedLootTable> lootTables,
         Map<String, WeightedLootTable> namedLootTables,
         LocationSpec hubSpawn,
+        double hubExclusionRadius,
         List<ArenaDefinition> arenas,
         int finalExtractionSeconds,
+        int defaultShrinkStartDelaySeconds,
+        int defaultShrinkDurationSeconds,
+        List<ThreatPhaseConfig> threatPhases,
         boolean joinPadParticles,
         boolean spectatorFlightEnabled,
         boolean spectatorPreventDamage,
@@ -73,8 +77,12 @@ public record ZonefallConfig(
                 readLootTables(config),
                 readNamedLootTables(config),
                 LocationSpec.from(config.getConfigurationSection("hub.spawn"), "world"),
+                config.getDouble("hub.exclusion-radius", 150.0),
                 readArenas(config),
                 config.getInt("arena-defaults.final-extraction-seconds", 30),
+                config.getInt("arena-defaults.shrink-start-delay-seconds", 240),
+                config.getInt("arena-defaults.shrink-duration-seconds", 420),
+                readThreatPhases(config),
                 config.getBoolean("ui.join-pad-particles", true),
                 config.getBoolean("spectator.allow-flight", true),
                 config.getBoolean("spectator.prevent-damage", true),
@@ -86,6 +94,16 @@ public record ZonefallConfig(
                 config.getBoolean("ui.spectator-labels.enabled", true),
                 config.getDouble("ui.spectator-labels.height", 2.4)
         );
+    }
+
+    public record ThreatPhaseConfig(
+            String id,
+            double startProgress,
+            int spawnIntervalSeconds,
+            int groupSize,
+            int maxAliveMobs,
+            double healthMultiplier
+    ) {
     }
 
     private static LootBundle readLootBundle(FileConfiguration config, String path) {
@@ -163,6 +181,48 @@ public record ZonefallConfig(
         return fallback;
     }
 
+    private static double readDouble(Map<?, ?> values, String key, double fallback) {
+        Object value = values.get(key);
+        if (value instanceof Number number) {
+            return number.doubleValue();
+        }
+        if (value != null) {
+            try {
+                return Double.parseDouble(value.toString());
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
+    }
+
+    private static List<ThreatPhaseConfig> readThreatPhases(FileConfiguration config) {
+        List<ThreatPhaseConfig> phases = new ArrayList<>();
+        if (config.isConfigurationSection("pve.phases")) {
+            for (String id : config.getConfigurationSection("pve.phases").getKeys(false)) {
+                String path = "pve.phases." + id;
+                phases.add(new ThreatPhaseConfig(
+                        id,
+                        config.getDouble(path + ".start-progress", 0.0),
+                        config.getInt(path + ".spawn-interval-seconds", config.getInt("pve.mob-spawn-interval-seconds", 20)),
+                        config.getInt(path + ".group-size", config.getInt("pve.mobs-per-player", 2)),
+                        config.getInt(path + ".max-alive-mobs", 40),
+                        config.getDouble(path + ".health-multiplier", 1.0)
+                ));
+            }
+        }
+        if (!phases.isEmpty()) {
+            return phases.stream()
+                    .sorted(java.util.Comparator.comparingDouble(ThreatPhaseConfig::startProgress))
+                    .toList();
+        }
+        return List.of(
+                new ThreatPhaseConfig("early", 0.0, 30, 1, 20, 1.0),
+                new ThreatPhaseConfig("mid", 0.35, 20, 2, 35, 1.25),
+                new ThreatPhaseConfig("late", 0.70, 12, 3, 55, 1.75)
+        );
+    }
+
     private static List<ArenaDefinition> readArenas(FileConfiguration config) {
         LocationSpec hubSpawn = LocationSpec.from(config.getConfigurationSection("hub.spawn"), "world");
         List<ArenaDefinition> definitions = new ArrayList<>();
@@ -206,14 +266,23 @@ public record ZonefallConfig(
                 true,
                 140.0,
                 35.0,
+                120,
+                180,
                 com.zonefall.loot.source.LootActivationMode.ALL_ACTIVE,
+                1,
+                com.zonefall.objective.ObjectiveActivationMode.ALL_ACTIVE,
                 1,
                 List.of(new com.zonefall.arena.ArenaJoinPoint(
                         id + "-join",
                         new LocationSpec(world, offsetX + 0.5, hubSpawn.y(), hubSpawn.z() + 6.0, 0, 0),
-                        1.5
+                        1.5,
+                        0.0,
+                        0.0,
+                        0.0
                 )),
-                List.of()
+                List.of(),
+                List.of(),
+                com.zonefall.pve.ThreatMobPools.forWorldName(world)
         );
     }
 }

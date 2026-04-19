@@ -143,6 +143,18 @@ public final class ExtractionManager {
         return true;
     }
 
+    public java.util.Optional<String> activateAdditionalZone() {
+        for (ExtractionZone zone : zones) {
+            if (activeZoneIds.contains(zone.id())) {
+                continue;
+            }
+            activeZoneIds.add(zone.id());
+            revealed = true;
+            return java.util.Optional.of(zone.describe());
+        }
+        return java.util.Optional.empty();
+    }
+
     private void selectActiveZones() {
         activeZoneIds.clear();
         if (zones.isEmpty()) {

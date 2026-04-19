@@ -4,6 +4,7 @@ import com.zonefall.arena.ArenaController;
 import com.zonefall.arena.ArenaManager;
 import com.zonefall.core.ZonefallConfig;
 import com.zonefall.extract.ExtractionZone;
+import com.zonefall.objective.ObjectiveMarker;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Location;
 import org.bukkit.entity.ArmorStand;
@@ -66,6 +67,11 @@ public final class WorldMarkerLabelService {
                     refreshLabel(key, zone.center(), "ACTIVE EXTRACTION | " + arena.displayName(), config.extractionLabelHeight());
                 }
             }
+            for (ObjectiveMarker marker : arena.objectiveMarkers()) {
+                String key = arena.id() + ":objective:" + marker.id();
+                liveKeys.add(key);
+                refreshLabel(key, marker.location(), marker.label() + " | " + arena.displayName(), config.extractionLabelHeight());
+            }
         }
         for (String key : Set.copyOf(labels.keySet())) {
             if (!liveKeys.contains(key)) {
@@ -96,4 +102,3 @@ public final class WorldMarkerLabelService {
         return stand;
     }
 }
-

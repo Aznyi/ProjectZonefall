@@ -3,6 +3,12 @@ package com.zonefall.arena;
 import com.zonefall.extract.ExtractionActivationMode;
 import com.zonefall.extract.ExtractionRevealMode;
 import com.zonefall.loot.source.LootActivationMode;
+import com.zonefall.objective.ObjectiveActivationMode;
+import com.zonefall.objective.ObjectiveDefinition;
+import com.zonefall.pve.ThreatMobEntry;
+import com.zonefall.pve.ThreatMobPools;
+import com.zonefall.pve.ThreatPhase;
+import org.bukkit.entity.EntityType;
 import org.bukkit.configuration.ConfigurationSection;
 
 import java.util.ArrayList;
@@ -33,10 +39,16 @@ public record ArenaDefinition(
         boolean allowLateJoin,
         double borderStartSize,
         double borderEndSize,
+        int shrinkStartDelaySeconds,
+        int shrinkDurationSeconds,
         LootActivationMode lootActivationMode,
         int activeLootSourceCount,
+        ObjectiveActivationMode objectiveActivationMode,
+        int activeHighValueObjectiveCount,
         List<ArenaJoinPoint> joinPoints,
-        List<ArenaLootSourcePlacement> lootSources
+        List<ArenaLootSourcePlacement> lootSources,
+        List<ObjectiveDefinition> objectives,
+        List<ThreatMobEntry> hostileMobPool
 ) {
     public static ArenaDefinition from(String id, ConfigurationSection section, LocationSpec hubSpawn) {
         String world = section.getString("world", hubSpawn.worldName());
@@ -66,10 +78,16 @@ public record ArenaDefinition(
                 section.getBoolean("allow-active-join-window", true),
                 section.getDouble("border-start-size", 140.0),
                 section.getDouble("border-end-size", 35.0),
+                section.getInt("shrink-start-delay-seconds", 240),
+                section.getInt("shrink-duration-seconds", Math.max(60, section.getInt("round-duration-seconds", 300) - 240)),
                 readLootActivationMode(section),
                 section.getInt("loot-active-count", 1),
+                readObjectiveActivationMode(section),
+                section.getInt("objective-active-count", 1),
                 readJoinPoints(section, hubSpawn),
-                readLootSources(section, world)
+                readLootSources(section, world),
+                readObjectives(section, world),
+                readHostileMobPool(section, world)
         );
     }
 
@@ -94,6 +112,14 @@ public record ArenaDefinition(
             return LootActivationMode.valueOf(section.getString("loot-activation", "ALL_ACTIVE").toUpperCase(java.util.Locale.ROOT));
         } catch (IllegalArgumentException ex) {
             return LootActivationMode.ALL_ACTIVE;
+        }
+    }
+
+    private static ObjectiveActivationMode readObjectiveActivationMode(ConfigurationSection section) {
+        try {
+            return ObjectiveActivationMode.valueOf(section.getString("objective-activation", "ALL_ACTIVE").toUpperCase(java.util.Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return ObjectiveActivationMode.ALL_ACTIVE;
         }
     }
 
@@ -159,5 +185,51 @@ public record ArenaDefinition(
             }
         }
         return List.copyOf(placements);
+    }
+
+    private static List<ObjectiveDefinition> readObjectives(ConfigurationSection section, String world) {
+        List<ObjectiveDefinition> objectives = new ArrayList<>();
+        if (section.isList("objectives")) {
+            for (java.util.Map<?, ?> objectiveValues : section.getMapList("objectives")) {
+                objectives.add(ObjectiveDefinition.fromMap(objectiveValues, world));
+            }
+        }
+        return List.copyOf(objectives);
+    }
+
+    private static List<ThreatMobEntry> readHostileMobPool(ConfigurationSection section, String world) {
+        List<ThreatMobEntry> entries = new ArrayList<>();
+        if (section.isList("hostile-mob-pool")) {
+            for (java.util.Map<?, ?> values : section.getMapList("hostile-mob-pool")) {
+                Object typeValue = values.get("type");
+                if (typeValue == null) {
+                    continue;
+                }
+                try {
+                    EntityType type = EntityType.valueOf(typeValue.toString().toUpperCase(java.util.Locale.ROOT));
+                    int weight = Math.max(1, intValue(values, "weight", 1));
+                    ThreatPhase minimumPhase = ThreatPhase.fromConfig(stringValue(values, "minimum-phase", "EARLY"), ThreatPhase.EARLY);
+                    entries.add(new ThreatMobEntry(type, weight, minimumPhase));
+                } catch (IllegalArgumentException ignored) {
+                    // Bad mob entries are ignored so a typo does not prevent local startup.
+                }
+            }
+        }
+        return entries.isEmpty() ? ThreatMobPools.forWorldName(world) : List.copyOf(entries);
+    }
+
+    private static int intValue(java.util.Map<?, ?> values, String key, int fallback) {
+        Object value = values.get(key);
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value != null) {
+            try {
+                return Integer.parseInt(value.toString());
+            } catch (NumberFormatException ignored) {
+                return fallback;
+            }
+        }
+        return fallback;
     }
 }

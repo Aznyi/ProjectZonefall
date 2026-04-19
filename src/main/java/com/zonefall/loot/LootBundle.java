@@ -37,6 +37,22 @@ public final class LootBundle {
         return copy;
     }
 
+    public LootBundle bonusForMultiplier(double multiplier) {
+        LootBundle bonus = new LootBundle();
+        if (multiplier <= 1.0) {
+            return bonus;
+        }
+        double bonusMultiplier = multiplier - 1.0;
+        for (Map.Entry<LootType, Integer> entry : amounts.entrySet()) {
+            int bonusAmount = (int) Math.floor(entry.getValue() * bonusMultiplier);
+            if (bonusAmount <= 0 && entry.getValue() > 0) {
+                bonusAmount = 1;
+            }
+            bonus.add(entry.getKey(), bonusAmount);
+        }
+        return bonus;
+    }
+
     public Map<LootType, Integer> asMap() {
         return Map.copyOf(amounts);
     }
@@ -69,4 +85,3 @@ public final class LootBundle {
         return describe();
     }
 }
-
