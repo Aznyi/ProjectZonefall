@@ -250,6 +250,18 @@ public final class ArenaController implements ActivePlayerProvider {
         if (!isActiveParticipant(player.getUniqueId())) {
             return;
         }
+        ZoneController.BarrierStatus barrierStatus = zoneController.barrierStatus(player.getLocation());
+        if (barrierStatus == ZoneController.BarrierStatus.OUTSIDE && config.barrierInstantDeath()) {
+            player.sendMessage(Messages.error("You crossed the arena barrier."));
+            dropAndEliminate(player, true);
+            checkEmptyReset();
+            return;
+        }
+        if (barrierStatus == ZoneController.BarrierStatus.NEAR_EDGE) {
+            player.teleport(zoneController.safeInside(player.getLocation()));
+            player.sendMessage(Messages.error("Barrier edge enforced."));
+            return;
+        }
         if (!definition.playableRegion().contains(player.getLocation())) {
             player.teleport(definition.joinSpawn().toLocation());
             player.sendMessage(Messages.error("Arena boundary enforced."));
@@ -408,6 +420,8 @@ public final class ArenaController implements ActivePlayerProvider {
                 ? "none"
                 : definition.joinPoints().stream().map(ArenaJoinPoint::describe).toList().toString();
         return statusLine()
+                + " world=" + definition.worldName()
+                + " dimension=" + runtimeArena.world().getEnvironment()
                 + " extractions=" + extractions
                 + " activeExtractions=" + extractionManager.describeActiveZones()
                 + " inactiveExtractions=" + extractionManager.describeInactiveZones()
@@ -415,6 +429,7 @@ public final class ArenaController implements ActivePlayerProvider {
                 + " reveal=" + extractionManager.revealState()
                 + " timing=round:" + definition.roundDurationSeconds() + "s shrinkDelay:"
                 + definition.shrinkStartDelaySeconds() + "s shrinkDuration:" + definition.shrinkDurationSeconds() + "s"
+                + " zone=" + zoneController.debugSummary()
                 + " joinPoints=" + joinPoints
                 + " lootPlacements=" + definition.lootSources().size()
                 + " activeLoot=" + lootSourceManager.activeCount()
@@ -422,6 +437,7 @@ public final class ArenaController implements ActivePlayerProvider {
                 + " lootMode=" + definition.lootActivationMode()
                 + " objectiveMode=" + objectiveManager.activationSummary()
                 + " objectives=" + objectiveManager.statusSummary()
+                + " validation=" + validationSummary()
                 + " spectatorPoint=" + spectatorLocation().getBlockX() + "," + spectatorLocation().getBlockY() + "," + spectatorLocation().getBlockZ();
     }
 
@@ -439,6 +455,14 @@ public final class ArenaController implements ActivePlayerProvider {
         return id() + " objectives=" + objectiveManager.debugSummary();
     }
 
+    public ArenaValidationReport validationReport() {
+        return ArenaValidator.report(config, definition);
+    }
+
+    public String validationSummary() {
+        return validationReport().summary();
+    }
+
     public Map<UUID, String> extractedLootSummary() {
         Map<UUID, String> result = new LinkedHashMap<>();
         lootTracker.extractedLootSnapshot().forEach((playerId, loot) -> result.put(playerId, loot.describe()));
@@ -447,6 +471,11 @@ public final class ArenaController implements ActivePlayerProvider {
 
     public boolean canParticipantBuild(Player player, Location location) {
         return isActiveParticipant(player.getUniqueId()) && definition.playableRegion().contains(location);
+    }
+
+    public boolean allowsArenaMobSpawn(Location location) {
+        return (state == ArenaState.ACTIVE || state == ArenaState.FINAL_EXTRACTION)
+                && definition.playableRegion().contains(location);
     }
 
     private void open() {

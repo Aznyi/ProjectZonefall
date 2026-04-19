@@ -1,5 +1,6 @@
 package com.zonefall.command;
 
+import com.zonefall.arena.ArenaAuthoringService;
 import com.zonefall.match.MatchManager;
 import com.zonefall.util.Messages;
 import org.bukkit.command.Command;
@@ -7,6 +8,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.plugin.java.JavaPlugin;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,9 +24,11 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
     );
 
     private final MatchManager matchManager;
+    private final ArenaAuthoringService authoringService;
 
-    public ZonefallCommand(MatchManager matchManager) {
+    public ZonefallCommand(JavaPlugin plugin, MatchManager matchManager) {
         this.matchManager = matchManager;
+        this.authoringService = new ArenaAuthoringService(plugin, matchManager);
     }
 
     @Override
@@ -95,6 +99,16 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Messages.info("/zonefall arena rolls <id>"));
         sender.sendMessage(Messages.info("/zonefall arena debug <id>"));
         sender.sendMessage(Messages.info("/zonefall arena objectives <id>"));
+        sender.sendMessage(Messages.info("/zonefall arena validate <id> [detailed]"));
+        sender.sendMessage(Messages.info("/zonefall arena setpoint <id> <center|join-spawn|spectator-point>"));
+        sender.sendMessage(Messages.info("/zonefall arena setpoint <id> extraction <index>"));
+        sender.sendMessage(Messages.info("/zonefall arena setpoint <id> objective <objective-id>"));
+        sender.sendMessage(Messages.info("/zonefall arena setpoint <id> loot-source <loot-source-id>"));
+        sender.sendMessage(Messages.info("/zonefall arena setpoint <id> join-point <join-point-id>"));
+        sender.sendMessage(Messages.info("/zonefall arena setregion <id> <playable|spectator> <pos1|pos2>"));
+        sender.sendMessage(Messages.info("/zonefall arena reloadconfig"));
+        sender.sendMessage(Messages.info("/zonefall arena save"));
+        sender.sendMessage(Messages.info("/zonefall arena tp <id> <point> [index|id]"));
         sender.sendMessage(Messages.info("/zonefall arena forcestart <id>"));
         sender.sendMessage(Messages.info("/zonefall arena reset <id>"));
         sender.sendMessage(Messages.info("/zonefall arena spectate <id>"));
@@ -154,6 +168,36 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
                     return;
                 }
                 matchManager.arenaObjectives(sender, args[2]);
+            }
+            case "validate" -> {
+                if (args.length < 3) {
+                    sender.sendMessage(Messages.error("Usage: /" + label + " arena validate <id> [detailed]"));
+                    return;
+                }
+                matchManager.arenaValidate(sender, args[2], args.length >= 4 && args[3].equalsIgnoreCase("detailed"));
+            }
+            case "setpoint" -> {
+                if (args.length < 4) {
+                    sender.sendMessage(Messages.error("Usage: /" + label + " arena setpoint <id> <point> [index|id]"));
+                    return;
+                }
+                requirePlayer(sender, player -> authoringService.setPoint(player, args[2], args[3], args.length >= 5 ? args[4] : ""));
+            }
+            case "setregion" -> {
+                if (args.length < 5) {
+                    sender.sendMessage(Messages.error("Usage: /" + label + " arena setregion <id> <playable|spectator> <pos1|pos2>"));
+                    return;
+                }
+                requirePlayer(sender, player -> authoringService.setRegion(player, args[2], args[3], args[4]));
+            }
+            case "reloadconfig" -> authoringService.reloadConfig(sender);
+            case "save" -> authoringService.saveConfig(sender);
+            case "tp" -> {
+                if (args.length < 4) {
+                    sender.sendMessage(Messages.error("Usage: /" + label + " arena tp <id> <point> [index|id]"));
+                    return;
+                }
+                requirePlayer(sender, player -> authoringService.teleport(player, args[2], args[3], args.length >= 5 ? args[4] : ""));
             }
             case "forcestart" -> {
                 if (args.length < 3) {

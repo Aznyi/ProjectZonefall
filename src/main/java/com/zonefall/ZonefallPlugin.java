@@ -15,6 +15,7 @@ import com.zonefall.stash.YamlStashService;
 import com.zonefall.ui.ArenaStatusUi;
 import com.zonefall.ui.JoinPadLabelService;
 import com.zonefall.ui.WorldMarkerLabelService;
+import org.bukkit.Location;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -33,6 +34,7 @@ public final class ZonefallPlugin extends JavaPlugin {
         saveDefaultConfig();
 
         ZonefallConfig config = ZonefallConfig.from(getConfig());
+        applyHubSpawn(config);
         StashService stashService = config.stashPersistenceEnabled()
                 ? new YamlStashService(this)
                 : new InMemoryStashService();
@@ -47,7 +49,7 @@ public final class ZonefallPlugin extends JavaPlugin {
         joinPadLabelService = new JoinPadLabelService(this, arenaManager, config);
         worldMarkerLabelService = new WorldMarkerLabelService(this, arenaManager, config);
 
-        ZonefallCommand command = new ZonefallCommand(matchManager);
+        ZonefallCommand command = new ZonefallCommand(this, matchManager);
         PluginCommand pluginCommand = getCommand("zonefall");
         if (pluginCommand != null) {
             pluginCommand.setExecutor(command);
@@ -61,6 +63,14 @@ public final class ZonefallPlugin extends JavaPlugin {
         worldMarkerLabelService.start();
 
         getLogger().info("Zonefall enabled. Phase 1 prototype ready.");
+    }
+
+    private void applyHubSpawn(ZonefallConfig config) {
+        Location hub = config.hubSpawn().toLocation();
+        hub.getWorld().setSpawnLocation(hub);
+        getLogger().info("Zonefall hub spawn set to "
+                + hub.getBlockX() + "," + hub.getBlockY() + "," + hub.getBlockZ()
+                + " in " + hub.getWorld().getName() + ".");
     }
 
     @Override

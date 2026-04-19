@@ -2,7 +2,7 @@ debug: true
 
 match:
   countdown-seconds: 10
-  duration-seconds: 900
+  duration-seconds: 1200
   restore-border-on-end: true
 
 hub:
@@ -10,15 +10,15 @@ hub:
     world: world
     x: 378.5
     y: 67.0
-    z: 41.5
+    z: 15.5
     yaw: 0.0
     pitch: 0.0
   exclusion-radius: 150.0
 
 arena-defaults:
-  final-extraction-seconds: 30
-  shrink-start-delay-seconds: 240
-  shrink-duration-seconds: 420
+  final-extraction-seconds: 90
+  shrink-start-delay-seconds: 420
+  shrink-duration-seconds: 600
 
 ui:
   join-pad-particles: true
@@ -38,8 +38,10 @@ spectator:
   prevent-hunger: true
 
 zone:
-  border-start-size: 260.0
-  border-end-size: 70.0
+  border-start-size: 360.0
+  border-end-size: 80.0
+  barrier-protection-distance: 1.0
+  barrier-instant-death: true
 
 arenas:
   yard:
@@ -47,11 +49,11 @@ arenas:
     world: world
     join-points:
       main:
-        x: 371.0
+        x: 369.5
         y: 67.0
-        z: 45.2
+        z: 45.5
         radius: 1.75
-        label-offset: { x: 0.0, y: 1.0, z: 0.0 }
+        label-offset: { x: 0.0, y: 0.0, z: 0.0 }
     center: { x: 378.5, y: 67.0, z: 460.5 }
     join-spawn: { x: 378.5, y: 67.0, z: 555.5, yaw: 180.0, pitch: 0.0 }
     spectator-point: { x: 378.5, y: 82.0, z: 610.5, yaw: 180.0, pitch: 20.0 }
@@ -75,13 +77,13 @@ arenas:
       - { x: 468.5, y: 67.0, z: 458.5 }
       - { x: 288.5, y: 67.0, z: 432.5 }
     countdown-seconds: 10
-    round-duration-seconds: 900
-    shrink-start-delay-seconds: 240
-    shrink-duration-seconds: 480
+    round-duration-seconds: 1200
+    shrink-start-delay-seconds: 420
+    shrink-duration-seconds: 600
     join-window-seconds: 90
     allow-active-join-window: true
-    border-start-size: 260.0
-    border-end-size: 70.0
+    border-start-size: 360.0
+    border-end-size: 80.0
     playable-region:
       min: { x: 258, y: 0, z: 340 }
       max: { x: 498, y: 320, z: 580 }
@@ -146,17 +148,18 @@ arenas:
           CLOTH: 3
   hollow:
     name: Iron Hollow
-    world: world
+    world: world_nether
     join-points:
       main:
         x: 378.5
         y: 67.0
         z: 45.5
         radius: 1.75
-    center: { x: 690.5, y: 67.0, z: 460.5 }
-    join-spawn: { x: 690.5, y: 67.0, z: 555.5, yaw: 180.0, pitch: 0.0 }
-    spectator-point: { x: 690.5, y: 82.0, z: 610.5, yaw: 180.0, pitch: 20.0 }
-    extraction: { x: 780.5, y: 67.0, z: 458.5 }
+        label-offset: { x: 0.0, y: 0.0, z: 0.0 }
+    center: { x: 0.5, y: 67.0, z: 0.5 }
+    join-spawn: { x: 0.5, y: 67.0, z: 95.5, yaw: 180.0, pitch: 0.0 }
+    spectator-point: { x: 0.5, y: 82.0, z: 150.5, yaw: 180.0, pitch: 20.0 }
+    extraction: { x: 90.5, y: 67.0, z: -2.5 }
     extraction-activation: RANDOM_TWO
     extraction-active-count: 2
     extraction-reveal-mode: CUSTOM_TIME_REMAINING
@@ -166,52 +169,51 @@ arenas:
     objective-activation: RANDOM_ONE
     objective-active-count: 1
     hostile-mob-pool:
-      - { type: ZOMBIE, weight: 20, minimum-phase: EARLY }
-      - { type: SKELETON, weight: 25, minimum-phase: EARLY }
-      - { type: SPIDER, weight: 15, minimum-phase: EARLY }
-      - { type: HUSK, weight: 25, minimum-phase: MID }
-      - { type: CREEPER, weight: 15, minimum-phase: MID }
-      - { type: WITCH, weight: 12, minimum-phase: LATE }
+      - { type: ZOMBIFIED_PIGLIN, weight: 35, minimum-phase: EARLY }
+      - { type: SKELETON, weight: 20, minimum-phase: EARLY }
+      - { type: MAGMA_CUBE, weight: 25, minimum-phase: MID }
+      - { type: BLAZE, weight: 18, minimum-phase: MID }
+      - { type: WITHER_SKELETON, weight: 12, minimum-phase: LATE }
     extractions:
-      - { x: 780.5, y: 67.0, z: 458.5 }
-      - { x: 600.5, y: 67.0, z: 432.5 }
+      - { x: 90.5, y: 67.0, z: -2.5 }
+      - { x: -90.5, y: 67.0, z: -28.5 }
     countdown-seconds: 10
-    round-duration-seconds: 900
-    shrink-start-delay-seconds: 240
-    shrink-duration-seconds: 480
+    round-duration-seconds: 1200
+    shrink-start-delay-seconds: 420
+    shrink-duration-seconds: 600
     join-window-seconds: 90
     allow-active-join-window: true
-    border-start-size: 260.0
-    border-end-size: 70.0
+    border-start-size: 360.0
+    border-end-size: 80.0
     playable-region:
-      min: { x: 570, y: 0, z: 340 }
-      max: { x: 810, y: 320, z: 580 }
+      min: { x: -120, y: 0, z: -120 }
+      max: { x: 120, y: 127, z: 120 }
     spectator-region:
-      min: { x: 545, y: 0, z: 315 }
-      max: { x: 835, y: 320, z: 605 }
+      min: { x: -145, y: 0, z: -145 }
+      max: { x: 145, y: 127, z: 145 }
     loot-sources:
       - id: hollow-crate-a
         type: SUPPLY_CRATE
         table: rare-cache
         tier: rare
-        location: { x: 724.5, y: 67.0, z: 488.5 }
+        location: { x: 34.5, y: 67.0, z: 28.5 }
       - id: hollow-scrap-a
         type: SCRAP_CACHE
         table: scrap-cache
         tier: common
-        location: { x: 656.5, y: 67.0, z: 502.5 }
+        location: { x: -34.5, y: 67.0, z: 42.5 }
       - id: hollow-ore-a
         type: ORE_NODE
         table: ore-node
         tier: uncommon
-        location: { x: 708.5, y: 67.0, z: 408.5 }
+        location: { x: 18.5, y: 67.0, z: -52.5 }
     objectives:
       - id: hollow-vault
         display-name: Hollow Vault
         type: HIGH_VALUE
         enabled: true
         marker-material: VAULT
-        location: { x: 742.5, y: 67.0, z: 454.5 }
+        location: { x: 52.5, y: 67.0, z: -6.5 }
         reveal: CUSTOM_TIME_REMAINING
         reveal-seconds-remaining: 120
         reward-table: objective-cache
@@ -224,7 +226,7 @@ arenas:
         type: HIGH_VALUE
         enabled: true
         marker-material: TRIAL_SPAWNER
-        location: { x: 638.5, y: 67.0, z: 446.5 }
+        location: { x: -52.5, y: 67.0, z: -14.5 }
         reveal: FINAL_EXTRACTION
         reveal-seconds-remaining: 60
         reward-table: gem-cache
@@ -245,17 +247,18 @@ arenas:
         reward-table: rare-cache
   glasswatch:
     name: Glasswatch
-    world: world
+    world: world_the_end
     join-points:
       main:
         x: 384.5
         y: 67.0
         z: 45.5
         radius: 1.75
-    center: { x: 66.5, y: 67.0, z: 460.5 }
-    join-spawn: { x: 66.5, y: 67.0, z: 555.5, yaw: 180.0, pitch: 0.0 }
-    spectator-point: { x: 66.5, y: 82.0, z: 610.5, yaw: 180.0, pitch: 20.0 }
-    extraction: { x: 156.5, y: 67.0, z: 458.5 }
+        label-offset: { x: 0.0, y: 0.0, z: 0.0 }
+    center: { x: 0.5, y: 67.0, z: 0.5 }
+    join-spawn: { x: 0.5, y: 67.0, z: 95.5, yaw: 180.0, pitch: 0.0 }
+    spectator-point: { x: 0.5, y: 82.0, z: 150.5, yaw: 180.0, pitch: 20.0 }
+    extraction: { x: 90.5, y: 67.0, z: -2.5 }
     extraction-activation: ALL_ACTIVE
     extraction-active-count: 1
     extraction-reveal-mode: ROUND_START
@@ -265,51 +268,49 @@ arenas:
     objective-activation: RANDOM_TWO
     objective-active-count: 2
     hostile-mob-pool:
-      - { type: SPIDER, weight: 25, minimum-phase: EARLY }
-      - { type: SKELETON, weight: 25, minimum-phase: EARLY }
-      - { type: ENDERMITE, weight: 20, minimum-phase: MID }
-      - { type: CAVE_SPIDER, weight: 18, minimum-phase: MID }
-      - { type: ENDERMAN, weight: 12, minimum-phase: LATE }
+      - { type: ENDERMAN, weight: 35, minimum-phase: EARLY }
+      - { type: ENDERMITE, weight: 30, minimum-phase: EARLY }
+      - { type: SKELETON, weight: 12, minimum-phase: MID }
     extractions:
-      - { x: 156.5, y: 67.0, z: 458.5 }
-      - { x: -24.5, y: 67.0, z: 432.5 }
+      - { x: 90.5, y: 67.0, z: -2.5 }
+      - { x: -90.5, y: 67.0, z: -28.5 }
     countdown-seconds: 10
-    round-duration-seconds: 900
-    shrink-start-delay-seconds: 240
-    shrink-duration-seconds: 480
+    round-duration-seconds: 1200
+    shrink-start-delay-seconds: 420
+    shrink-duration-seconds: 600
     join-window-seconds: 90
     allow-active-join-window: true
-    border-start-size: 260.0
-    border-end-size: 70.0
+    border-start-size: 360.0
+    border-end-size: 80.0
     playable-region:
-      min: { x: -54, y: 0, z: 340 }
-      max: { x: 186, y: 320, z: 580 }
+      min: { x: -120, y: 0, z: -120 }
+      max: { x: 120, y: 320, z: 120 }
     spectator-region:
-      min: { x: -79, y: 0, z: 315 }
-      max: { x: 211, y: 320, z: 605 }
+      min: { x: -145, y: 0, z: -145 }
+      max: { x: 145, y: 320, z: 145 }
     loot-sources:
       - id: glasswatch-crate-a
         type: SUPPLY_CRATE
         table: supply-crate
         tier: standard
-        location: { x: 100.5, y: 67.0, z: 488.5 }
+        location: { x: 34.5, y: 67.0, z: 28.5 }
       - id: glasswatch-scrap-a
         type: SCRAP_CACHE
         table: scrap-cache
         tier: common
-        location: { x: 32.5, y: 67.0, z: 502.5 }
+        location: { x: -34.5, y: 67.0, z: 42.5 }
       - id: glasswatch-ore-a
         type: ORE_NODE
         table: gem-cache
         tier: rare
-        location: { x: 84.5, y: 67.0, z: 408.5 }
+        location: { x: 18.5, y: 67.0, z: -52.5 }
     objectives:
       - id: glasswatch-beacon
         display-name: Glasswatch Beacon
         type: HIGH_VALUE
         enabled: true
         marker-material: BEACON
-        location: { x: 118.5, y: 67.0, z: 454.5 }
+        location: { x: 52.5, y: 67.0, z: -6.5 }
         reveal: ROUND_START
         reveal-seconds-remaining: 60
         reward-table: gem-cache
@@ -322,7 +323,7 @@ arenas:
         type: HIGH_VALUE
         enabled: true
         marker-material: END_ROD
-        location: { x: 14.5, y: 67.0, z: 446.5 }
+        location: { x: -52.5, y: 67.0, z: -14.5 }
         reveal: CUSTOM_TIME_REMAINING
         reveal-seconds-remaining: 150
         reward-table: objective-cache

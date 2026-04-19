@@ -2,14 +2,13 @@ package com.zonefall.pve;
 
 import com.zonefall.arena.ArenaDefinition;
 import com.zonefall.arena.CuboidRegion;
+import com.zonefall.arena.SafePlacementValidator;
 import com.zonefall.core.ZonefallConfig;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
-import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -125,17 +124,7 @@ public final class ArenaThreatDirector {
         if (isNearActivePlayer(location)) {
             return false;
         }
-        Block feet = location.getBlock();
-        Block head = feet.getRelative(0, 1, 0);
-        Block ground = feet.getRelative(0, -1, 0);
-        if (!feet.isPassable() || !head.isPassable() || !ground.getType().isSolid()) {
-            return false;
-        }
-        if (ground.isLiquid() || feet.isLiquid() || head.isLiquid()) {
-            return false;
-        }
-        Material groundType = ground.getType();
-        return groundType != Material.WATER && groundType != Material.LAVA;
+        return SafePlacementValidator.validate(location).safe();
     }
 
     private boolean isNearActivePlayer(Location location) {

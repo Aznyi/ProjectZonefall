@@ -2,6 +2,9 @@ package com.zonefall.match;
 
 import com.zonefall.arena.ArenaController;
 import com.zonefall.arena.ArenaManager;
+import com.zonefall.arena.ArenaValidationReport;
+import com.zonefall.arena.ValidationEntry;
+import com.zonefall.core.ZonefallConfig;
 import com.zonefall.loot.LootType;
 import com.zonefall.loot.source.LootSourceType;
 import com.zonefall.util.Messages;
@@ -21,12 +24,17 @@ import java.util.UUID;
 public final class MatchManager {
     private final ArenaManager arenaManager;
     private final com.zonefall.core.ZonefallServices services;
-    private final com.zonefall.core.ZonefallConfig config;
+    private ZonefallConfig config;
 
-    public MatchManager(ArenaManager arenaManager, com.zonefall.core.ZonefallServices services, com.zonefall.core.ZonefallConfig config) {
+    public MatchManager(ArenaManager arenaManager, com.zonefall.core.ZonefallServices services, ZonefallConfig config) {
         this.arenaManager = arenaManager;
         this.services = services;
         this.config = config;
+    }
+
+    public void reloadConfig(ZonefallConfig config) {
+        this.config = config;
+        arenaManager.reload(config);
     }
 
     public Optional<ArenaController> findMatchFor(UUID playerId) {
@@ -95,6 +103,7 @@ public final class MatchManager {
         arenaRolls(sender, id);
         if (sender instanceof Player player) {
             sender.sendMessage(Messages.info("Block break eligibility here: " + canBuild(player, player.getLocation())));
+            sender.sendMessage(Messages.info(hubDebugLine(player)));
         }
     }
 
@@ -102,6 +111,18 @@ public final class MatchManager {
         ArenaController arena = requireArena(sender, id);
         if (arena != null) {
             sender.sendMessage(Messages.info(arena.objectivesLine()));
+        }
+    }
+
+    public void arenaValidate(CommandSender sender, String id, boolean detailed) {
+        ArenaController arena = requireArena(sender, id);
+        if (arena == null) {
+            return;
+        }
+        ArenaValidationReport report = arena.validationReport();
+        sender.sendMessage(Messages.info("Validation for " + arena.displayName() + ": " + report.summary()));
+        for (ValidationEntry entry : report.entries()) {
+            sender.sendMessage(Messages.info(entry.format(detailed)));
         }
     }
 
@@ -245,7 +266,27 @@ public final class MatchManager {
     }
 
     public Optional<org.bukkit.Location> respawnLocation(Player player) {
-        return arenaManager.findForPlayer(player.getUniqueId()).map(ArenaController::hubReturnLocation);
+        return Optional.of(arenaManager.findForPlayer(player.getUniqueId())
+                .map(ArenaController::hubReturnLocation)
+                .orElse(config.hubSpawn().toLocation()));
+    }
+
+    public void handleFirstJoin(Player player) {
+        if (!player.hasPlayedBefore()) {
+            player.teleport(config.hubSpawn().toLocation());
+        }
+    }
+
+    public boolean canNaturalHostileSpawn(org.bukkit.Location location) {
+        return arenaManager.findActivePlayableRegion(location).isPresent();
+    }
+
+    public String hubDebugLine(Player player) {
+        return "hubReturn=" + config.hubSpawn().toLocation().getBlockX()
+                + "," + config.hubSpawn().toLocation().getBlockY()
+                + "," + config.hubSpawn().toLocation().getBlockZ()
+                + " participant=" + isArenaParticipant(player)
+                + " atHubWorld=" + player.getWorld().equals(config.hubSpawn().toLocation().getWorld());
     }
 
     public boolean isProtected(org.bukkit.Location location) {

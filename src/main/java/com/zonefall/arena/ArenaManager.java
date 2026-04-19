@@ -18,9 +18,23 @@ import java.util.UUID;
  */
 public final class ArenaManager {
     private final Map<String, ArenaController> arenas = new LinkedHashMap<>();
+    private final Plugin plugin;
+    private final ZonefallServices services;
+    private final ArenaAnnouncementService announcements = new ArenaAnnouncementService();
 
     public ArenaManager(Plugin plugin, ZonefallConfig config, ZonefallServices services) {
-        ArenaAnnouncementService announcements = new ArenaAnnouncementService();
+        this.plugin = plugin;
+        this.services = services;
+        load(config);
+    }
+
+    public void reload(ZonefallConfig config) {
+        shutdown();
+        arenas.clear();
+        load(config);
+    }
+
+    private void load(ZonefallConfig config) {
         for (ArenaDefinition definition : config.arenas()) {
             ArenaValidator.validate(plugin, config, definition);
             arenas.put(definition.id().toLowerCase(), new ArenaController(plugin, config, services, definition, announcements));
@@ -46,6 +60,10 @@ public final class ArenaManager {
 
     public Optional<ArenaController> findSpectatorRegion(Location location) {
         return arenas.values().stream().filter(arena -> arena.isSpectatorLocation(location)).findFirst();
+    }
+
+    public Optional<ArenaController> findActivePlayableRegion(Location location) {
+        return arenas.values().stream().filter(arena -> arena.allowsArenaMobSpawn(location)).findFirst();
     }
 
     public Optional<ArenaController> findJoinPoint(Location location) {

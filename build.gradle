@@ -32,4 +32,3 @@ processResources {
 jar {
     archiveBaseName = 'Zonefall'
 }
-

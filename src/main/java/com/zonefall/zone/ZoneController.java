@@ -2,6 +2,7 @@ package com.zonefall.zone;
 
 import com.zonefall.arena.Arena;
 import com.zonefall.core.ZonefallConfig;
+import org.bukkit.Location;
 import org.bukkit.WorldBorder;
 import org.bukkit.plugin.Plugin;
 
@@ -9,6 +10,12 @@ import org.bukkit.plugin.Plugin;
  * Applies match zone pressure through the vanilla world border.
  */
 public final class ZoneController {
+    public enum BarrierStatus {
+        INSIDE,
+        NEAR_EDGE,
+        OUTSIDE
+    }
+
     private final Plugin plugin;
     private final ZonefallConfig config;
     private final Arena arena;
@@ -70,6 +77,37 @@ public final class ZoneController {
         plugin.getLogger().info("Zone border size now " + Math.round(arena.world().getWorldBorder().getSize()) + ".");
     }
 
+    public BarrierStatus barrierStatus(Location location) {
+        if (!started || location.getWorld() == null || !location.getWorld().equals(arena.world())) {
+            return BarrierStatus.INSIDE;
+        }
+        double radius = currentRadius();
+        double dx = Math.abs(location.getX() - arena.center().getX());
+        double dz = Math.abs(location.getZ() - arena.center().getZ());
+        double furthestAxis = Math.max(dx, dz);
+        if (furthestAxis > radius) {
+            return BarrierStatus.OUTSIDE;
+        }
+        double distanceToEdge = radius - furthestAxis;
+        if (distanceToEdge <= config.barrierProtectionDistance()) {
+            return BarrierStatus.NEAR_EDGE;
+        }
+        return BarrierStatus.INSIDE;
+    }
+
+    public Location safeInside(Location location) {
+        double radius = Math.max(1.0, currentRadius());
+        double margin = Math.max(1.0, config.barrierProtectionDistance() + 1.0);
+        double minX = arena.center().getX() - radius + margin;
+        double maxX = arena.center().getX() + radius - margin;
+        double minZ = arena.center().getZ() - radius + margin;
+        double maxZ = arena.center().getZ() + radius - margin;
+        Location result = location.clone();
+        result.setX(clamp(location.getX(), minX, maxX));
+        result.setZ(clamp(location.getZ(), minZ, maxZ));
+        return result;
+    }
+
     public void stop() {
         if (!config.restoreBorderOnEnd()) {
             return;
@@ -90,6 +128,22 @@ public final class ZoneController {
                 + " borderEnd=" + borderEndSize
                 + " shrinkDelay=" + shrinkStartDelaySeconds + "s"
                 + " shrinkDuration=" + shrinkSeconds + "s"
+                + " currentSize=" + Math.round(currentSize())
+                + " currentRadius=" + Math.round(currentRadius())
+                + " protectionDistance=" + config.barrierProtectionDistance()
+                + " instantDeath=" + config.barrierInstantDeath()
                 + " shrinking=" + shrinking;
+    }
+
+    private double currentSize() {
+        return started ? arena.world().getWorldBorder().getSize() : borderStartSize;
+    }
+
+    private double currentRadius() {
+        return currentSize() / 2.0;
+    }
+
+    private double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
     }
 }
