@@ -6,6 +6,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
@@ -17,10 +18,10 @@ import org.bukkit.event.world.WorldUnloadEvent;
 import java.util.ArrayList;
 import java.util.List;
 
-public final class OdinLightListener implements Listener {
-    private final OdinLightManager manager;
+public final class CustomLightBlockListener implements Listener {
+    private final CustomLightBlockManager manager;
 
-    public OdinLightListener(OdinLightManager manager) {
+    public CustomLightBlockListener(CustomLightBlockManager manager) {
         this.manager = manager;
     }
 
@@ -30,18 +31,28 @@ public final class OdinLightListener implements Listener {
         if (manager.isSource(replaced)) {
             manager.removeSource(replaced);
         }
-        if (manager.isOdinLightItem(event.getItemInHand())) {
-            manager.addSource(event.getBlockPlaced());
-        }
+        manager.itemType(event.getItemInHand()).ifPresent(type -> manager.addSource(event.getBlockPlaced(), type));
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onBlockBreak(BlockBreakEvent event) {
+        CustomLightBlockType type = manager.sourceType(event.getBlock());
+        if (type == null) {
+            return;
+        }
+        event.setDropItems(false);
+        if (event.getPlayer().getGameMode() != GameMode.CREATIVE) {
+            manager.removeSource(event.getBlock());
+            event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation(),
+                    manager.createItem(type, 1));
+            return;
+        }
+        manager.removeSource(event.getBlock());
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onBlockBurn(BlockBurnEvent event) {
         if (manager.isSource(event.getBlock())) {
-            event.setDropItems(false);
-            if (event.getPlayer().getGameMode() != GameMode.CREATIVE) {
-                event.getBlock().getWorld().dropItemNaturally(event.getBlock().getLocation(), manager.createItem(1));
-            }
             manager.removeSource(event.getBlock());
         }
     }

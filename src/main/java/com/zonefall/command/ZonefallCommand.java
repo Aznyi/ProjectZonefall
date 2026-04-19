@@ -1,7 +1,8 @@
 package com.zonefall.command;
 
 import com.zonefall.arena.ArenaAuthoringService;
-import com.zonefall.customblock.OdinLightManager;
+import com.zonefall.customblock.CustomLightBlockManager;
+import com.zonefall.customblock.CustomLightBlockType;
 import com.zonefall.match.MatchManager;
 import com.zonefall.util.Messages;
 import org.bukkit.Bukkit;
@@ -28,11 +29,11 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
 
     private final MatchManager matchManager;
     private final ArenaAuthoringService authoringService;
-    private final OdinLightManager odinLightManager;
+    private final CustomLightBlockManager customLightBlockManager;
 
-    public ZonefallCommand(JavaPlugin plugin, MatchManager matchManager, OdinLightManager odinLightManager) {
+    public ZonefallCommand(JavaPlugin plugin, MatchManager matchManager, CustomLightBlockManager customLightBlockManager) {
         this.matchManager = matchManager;
-        this.odinLightManager = odinLightManager;
+        this.customLightBlockManager = customLightBlockManager;
         this.authoringService = new ArenaAuthoringService(plugin, matchManager);
     }
 
@@ -76,7 +77,14 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 2 && args[0].equalsIgnoreCase("giveblock")) {
-            return "odins_light".startsWith(args[1].toLowerCase(Locale.ROOT)) ? List.of("odins_light") : List.of();
+            String prefix = args[1].toLowerCase(Locale.ROOT);
+            List<String> matches = new ArrayList<>();
+            for (CustomLightBlockType type : CustomLightBlockType.values()) {
+                if (type.itemId().startsWith(prefix)) {
+                    matches.add(type.itemId());
+                }
+            }
+            return matches;
         }
         if (args.length != 1) {
             return List.of();
@@ -118,7 +126,7 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Messages.info("/zonefall grantloot <player> <type> <amount> - grant match loot"));
         sender.sendMessage(Messages.info("/zonefall lootstatus [player] - show carried match loot"));
         sender.sendMessage(Messages.info("/zonefall placeloot <type> - place a loot source at your location"));
-        sender.sendMessage(Messages.info("/zonefall giveblock odins_light [player] [amount] - give Odin's Light"));
+        sender.sendMessage(Messages.info("/zonefall giveblock <odins_light|bamboo_light> [player] [amount] - give a custom block"));
         sender.sendMessage(Messages.info("/zonefall extractstatus [player] - show extraction hold progress"));
         sender.sendMessage(Messages.info("/zonefall lootreload - flush local loot/stash data"));
         sender.sendMessage(Messages.info("/zonefall status - print match debug state"));
@@ -219,16 +227,25 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
     }
 
     private void handleGiveBlock(CommandSender sender, String[] args) {
-        if (args.length < 2 || !args[1].equalsIgnoreCase("odins_light")) {
-            sender.sendMessage(Messages.error("Usage: /zonefall giveblock odins_light [player] [amount]"));
+        if (args.length < 2) {
+            sender.sendMessage(Messages.error("Usage: /zonefall giveblock <odins_light|bamboo_light> [player] [amount]"));
+            return;
+        }
+        CustomLightBlockType type = CustomLightBlockType.fromItemId(args[1].toLowerCase(Locale.ROOT));
+        if (type == null) {
+            sender.sendMessage(Messages.error("Unknown custom block. Try odins_light or bamboo_light."));
             return;
         }
         Player target;
         int amountArgIndex;
         if (args.length >= 3) {
             target = Bukkit.getPlayerExact(args[2]);
-            amountArgIndex = 3;
-            if (target == null) {
+            if (target != null) {
+                amountArgIndex = 3;
+            } else if (sender instanceof Player player && isInteger(args[2])) {
+                target = player;
+                amountArgIndex = 2;
+            } else {
                 sender.sendMessage(Messages.error("Player not found: " + args[2]));
                 return;
             }
@@ -252,9 +269,18 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage(Messages.error("Amount must be between 1 and 64."));
             return;
         }
-        odinLightManager.give(target, amount);
+        customLightBlockManager.give(target, type, amount);
         if (!sender.equals(target)) {
-            sender.sendMessage(Messages.ok("Given Odin's Light x" + amount + " to " + target.getName() + "."));
+            sender.sendMessage(Messages.ok("Given " + type.displayName() + " x" + amount + " to " + target.getName() + "."));
+        }
+    }
+
+    private boolean isInteger(String value) {
+        try {
+            Integer.parseInt(value);
+            return true;
+        } catch (NumberFormatException ex) {
+            return false;
         }
     }
 
