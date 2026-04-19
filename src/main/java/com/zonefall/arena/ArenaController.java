@@ -63,6 +63,7 @@ public final class ArenaController implements ActivePlayerProvider {
     private final Set<UUID> participants = new LinkedHashSet<>();
     private final Set<UUID> extractedPlayers = new LinkedHashSet<>();
     private final Set<UUID> eliminatedPlayers = new LinkedHashSet<>();
+    private final Map<UUID, Long> lastBarrierWarningMillis = new LinkedHashMap<>();
 
     private ArenaState state = ArenaState.RESETTING;
     private BukkitTask tickTask;
@@ -299,6 +300,24 @@ public final class ArenaController implements ActivePlayerProvider {
         pickupDrops(player);
     }
 
+    public Optional<Location> stationaryBarrierCorrection(Player player, Location from, Location to) {
+        if (!isActiveParticipant(player.getUniqueId()) || zoneController.isShrinking()) {
+            return Optional.empty();
+        }
+        if (to == null || to.getWorld() == null || to.getWorld() != runtimeArena.world()) {
+            return Optional.empty();
+        }
+        ZoneController.BarrierStatus status = zoneController.barrierStatus(to);
+        if (status == ZoneController.BarrierStatus.INSIDE) {
+            return Optional.empty();
+        }
+        Location corrected = zoneController.solidWallReturnLocation(from, to);
+        zoneController.recordAction(ZoneController.BarrierAction.SOLID_WALL_PROTECTION, corrected, "stationary-solid-move-block");
+        logStationaryBarrierBlock(player, from, to, corrected);
+        maybeWarnClosedBarrier(player);
+        return Optional.of(corrected);
+    }
+
     private void enforceSolidStationaryBarrier(Player player) {
         Location desired = zoneController.safeInside(player.getLocation());
         SafePointResolver.resolve(desired, definition.playableRegion(), runtimeArena.center(), 12)
@@ -312,6 +331,45 @@ public final class ArenaController implements ActivePlayerProvider {
                     dropAndEliminate(player, true);
                     checkEmptyReset();
                 });
+    }
+
+    private void maybeWarnClosedBarrier(Player player) {
+        long now = System.currentTimeMillis();
+        long last = lastBarrierWarningMillis.getOrDefault(player.getUniqueId(), 0L);
+        if (now - last < 1000L) {
+            return;
+        }
+        lastBarrierWarningMillis.put(player.getUniqueId(), now);
+        player.sendMessage(Messages.error("Arena barrier is closed."));
+    }
+
+    private void logStationaryBarrierBlock(Player player, Location from, Location to, Location corrected) {
+        if (!config.debug()) {
+            return;
+        }
+        plugin.getLogger().info("Arena barrier blocked movement"
+                + " player=" + player.getName()
+                + " arena=" + id()
+                + " from=" + describeLocation(from)
+                + " to=" + describeLocation(to)
+                + " corrected=" + describeLocation(corrected)
+                + " size=" + Math.round(zoneController.currentSize() * 10.0) / 10.0
+                + " radius=" + Math.round(zoneController.currentRadius() * 10.0) / 10.0
+                + " shrinking=" + zoneController.isShrinking()
+                + " blocked=true");
+    }
+
+    private String describeLocation(Location location) {
+        if (location == null || location.getWorld() == null) {
+            return "unknown";
+        }
+        return location.getWorld().getName()
+                + " "
+                + Math.round(location.getX() * 10.0) / 10.0
+                + ","
+                + Math.round(location.getY() * 10.0) / 10.0
+                + ","
+                + Math.round(location.getZ() * 10.0) / 10.0;
     }
 
     public void handleMobKill(Player player) {

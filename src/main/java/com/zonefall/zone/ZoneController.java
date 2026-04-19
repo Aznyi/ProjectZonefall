@@ -148,6 +148,24 @@ public final class ZoneController {
         return result;
     }
 
+    public Location solidWallReturnLocation(Location from, Location attemptedTo) {
+        Location result = from.clone();
+        if (result.getWorld() == null || !result.getWorld().equals(arena.world())) {
+            result = attemptedTo.clone();
+        }
+        double radius = Math.max(1.0, currentRadius());
+        double epsilon = Math.max(0.05, Math.min(0.25, config.barrierProtectionDistance() * 0.1));
+        double minX = arena.center().getX() - radius + epsilon;
+        double maxX = arena.center().getX() + radius - epsilon;
+        double minZ = arena.center().getZ() - radius + epsilon;
+        double maxZ = arena.center().getZ() + radius - epsilon;
+        result.setX(clamp(result.getX(), minX, maxX));
+        result.setZ(clamp(result.getZ(), minZ, maxZ));
+        result.setYaw(attemptedTo.getYaw());
+        result.setPitch(attemptedTo.getPitch());
+        return result;
+    }
+
     public void stop() {
         if (!config.restoreBorderOnEnd()) {
             return;
@@ -188,11 +206,11 @@ public final class ZoneController {
                 + " shrinking=" + shrinking;
     }
 
-    private double currentSize() {
+    public double currentSize() {
         return started ? arena.world().getWorldBorder().getSize() : borderStartSize;
     }
 
-    private double currentRadius() {
+    public double currentRadius() {
         return currentSize() / 2.0;
     }
 
