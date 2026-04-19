@@ -5,6 +5,8 @@ import com.zonefall.command.ZonefallCommand;
 import com.zonefall.core.ZonefallConfig;
 import com.zonefall.core.ZonefallServices;
 import com.zonefall.crafting.NoopCraftingService;
+import com.zonefall.customblock.OdinLightListener;
+import com.zonefall.customblock.OdinLightManager;
 import com.zonefall.extract.ExtractionListener;
 import com.zonefall.match.ArenaMovementListener;
 import com.zonefall.match.MatchListener;
@@ -29,6 +31,7 @@ public final class ZonefallPlugin extends JavaPlugin {
     private ArenaStatusUi arenaStatusUi;
     private JoinPadLabelService joinPadLabelService;
     private WorldMarkerLabelService worldMarkerLabelService;
+    private OdinLightManager odinLightManager;
 
     @Override
     public void onEnable() {
@@ -46,11 +49,12 @@ public final class ZonefallPlugin extends JavaPlugin {
         );
         ArenaManager arenaManager = new ArenaManager(this, config, services);
         matchManager = new MatchManager(arenaManager, services, config);
+        odinLightManager = new OdinLightManager(this);
         arenaStatusUi = new ArenaStatusUi(this, arenaManager, config);
         joinPadLabelService = new JoinPadLabelService(this, arenaManager, config);
         worldMarkerLabelService = new WorldMarkerLabelService(this, arenaManager, config);
 
-        ZonefallCommand command = new ZonefallCommand(this, matchManager);
+        ZonefallCommand command = new ZonefallCommand(this, matchManager, odinLightManager);
         PluginCommand pluginCommand = getCommand("zonefall");
         if (pluginCommand != null) {
             pluginCommand.setExecutor(command);
@@ -60,6 +64,9 @@ public final class ZonefallPlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new ArenaMovementListener(matchManager), this);
         getServer().getPluginManager().registerEvents(new ExtractionListener(matchManager), this);
         getServer().getPluginManager().registerEvents(new MatchListener(matchManager), this);
+        getServer().getPluginManager().registerEvents(new OdinLightListener(odinLightManager), this);
+        odinLightManager.registerRecipe();
+        odinLightManager.restoreLoadedChunks();
         arenaStatusUi.start();
         joinPadLabelService.start();
         worldMarkerLabelService.start();
@@ -91,6 +98,9 @@ public final class ZonefallPlugin extends JavaPlugin {
         }
         if (services != null) {
             services.stashService().saveAll();
+        }
+        if (odinLightManager != null) {
+            odinLightManager.saveAll();
         }
         getLogger().info("Zonefall disabled.");
     }

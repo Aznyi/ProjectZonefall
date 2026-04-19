@@ -1,8 +1,10 @@
 package com.zonefall.command;
 
 import com.zonefall.arena.ArenaAuthoringService;
+import com.zonefall.customblock.OdinLightManager;
 import com.zonefall.match.MatchManager;
 import com.zonefall.util.Messages;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -20,14 +22,17 @@ import java.util.Locale;
 public final class ZonefallCommand implements CommandExecutor, TabCompleter {
     private static final List<String> SUBCOMMANDS = List.of(
             "help", "create", "start", "stop", "join", "leave", "status", "extract",
-            "stash", "grantloot", "lootstatus", "placeloot", "lootreload", "extractstatus", "arena"
+            "stash", "grantloot", "lootstatus", "placeloot", "lootreload", "extractstatus", "arena",
+            "giveblock"
     );
 
     private final MatchManager matchManager;
     private final ArenaAuthoringService authoringService;
+    private final OdinLightManager odinLightManager;
 
-    public ZonefallCommand(JavaPlugin plugin, MatchManager matchManager) {
+    public ZonefallCommand(JavaPlugin plugin, MatchManager matchManager, OdinLightManager odinLightManager) {
         this.matchManager = matchManager;
+        this.odinLightManager = odinLightManager;
         this.authoringService = new ArenaAuthoringService(plugin, matchManager);
     }
 
@@ -60,6 +65,7 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
                 }
                 requirePlayer(sender, player -> matchManager.placeLoot(player, args[1]));
             }
+            case "giveblock" -> handleGiveBlock(sender, args);
             case "lootreload" -> matchManager.lootReload(sender);
             case "extractstatus" -> matchManager.extractStatus(sender, args.length >= 2 ? args[1] : null);
             default -> sender.sendMessage(Messages.error("Unknown command. Try /" + label + " help."));
@@ -69,6 +75,9 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
 
     @Override
     public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length == 2 && args[0].equalsIgnoreCase("giveblock")) {
+            return "odins_light".startsWith(args[1].toLowerCase(Locale.ROOT)) ? List.of("odins_light") : List.of();
+        }
         if (args.length != 1) {
             return List.of();
         }
@@ -109,6 +118,7 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Messages.info("/zonefall grantloot <player> <type> <amount> - grant match loot"));
         sender.sendMessage(Messages.info("/zonefall lootstatus [player] - show carried match loot"));
         sender.sendMessage(Messages.info("/zonefall placeloot <type> - place a loot source at your location"));
+        sender.sendMessage(Messages.info("/zonefall giveblock odins_light [player] [amount] - give Odin's Light"));
         sender.sendMessage(Messages.info("/zonefall extractstatus [player] - show extraction hold progress"));
         sender.sendMessage(Messages.info("/zonefall lootreload - flush local loot/stash data"));
         sender.sendMessage(Messages.info("/zonefall status - print match debug state"));
@@ -205,6 +215,46 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
                 matchManager.resetArena(sender, args[2]);
             }
             default -> sender.sendMessage(Messages.error("Unknown arena command. Try /" + label + " help."));
+        }
+    }
+
+    private void handleGiveBlock(CommandSender sender, String[] args) {
+        if (args.length < 2 || !args[1].equalsIgnoreCase("odins_light")) {
+            sender.sendMessage(Messages.error("Usage: /zonefall giveblock odins_light [player] [amount]"));
+            return;
+        }
+        Player target;
+        int amountArgIndex;
+        if (args.length >= 3) {
+            target = Bukkit.getPlayerExact(args[2]);
+            amountArgIndex = 3;
+            if (target == null) {
+                sender.sendMessage(Messages.error("Player not found: " + args[2]));
+                return;
+            }
+        } else if (sender instanceof Player player) {
+            target = player;
+            amountArgIndex = 2;
+        } else {
+            sender.sendMessage(Messages.error("Console must specify a player."));
+            return;
+        }
+        int amount = 1;
+        if (args.length > amountArgIndex) {
+            try {
+                amount = Integer.parseInt(args[amountArgIndex]);
+            } catch (NumberFormatException ex) {
+                sender.sendMessage(Messages.error("Amount must be a number."));
+                return;
+            }
+        }
+        if (amount <= 0 || amount > 64) {
+            sender.sendMessage(Messages.error("Amount must be between 1 and 64."));
+            return;
+        }
+        odinLightManager.give(target, amount);
+        if (!sender.equals(target)) {
+            sender.sendMessage(Messages.ok("Given Odin's Light x" + amount + " to " + target.getName() + "."));
         }
     }
 
