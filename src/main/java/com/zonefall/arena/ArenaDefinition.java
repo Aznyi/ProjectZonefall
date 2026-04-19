@@ -24,7 +24,6 @@ public record ArenaDefinition(
         LocationSpec center,
         LocationSpec joinSpawn,
         LocationSpec hubReturn,
-        LocationSpec spectatorPoint,
         LocationSpec extraction,
         List<LocationSpec> extractions,
         ExtractionActivationMode extractionActivationMode,
@@ -32,7 +31,7 @@ public record ArenaDefinition(
         ExtractionRevealMode extractionRevealMode,
         int extractionRevealSecondsRemaining,
         CuboidRegion playableRegion,
-        CuboidRegion spectatorRegion,
+        CuboidRegion protectedRegion,
         int countdownSeconds,
         int roundDurationSeconds,
         int joinWindowSeconds,
@@ -61,9 +60,6 @@ public record ArenaDefinition(
                 section.isConfigurationSection("hub-return")
                         ? LocationSpec.from(section.getConfigurationSection("hub-return"), hubSpawn.worldName())
                         : hubSpawn,
-                section.isConfigurationSection("spectator-point")
-                        ? LocationSpec.from(section.getConfigurationSection("spectator-point"), world)
-                        : LocationSpec.from(section.getConfigurationSection("join-spawn"), world),
                 LocationSpec.from(section.getConfigurationSection("extraction"), world),
                 readExtractions(section, world),
                 readActivationMode(section),
@@ -71,7 +67,9 @@ public record ArenaDefinition(
                 readRevealMode(section),
                 section.getInt("extraction-reveal-seconds-remaining", 60),
                 CuboidRegion.from(section.getConfigurationSection("playable-region"), world, 64),
-                CuboidRegion.from(section.getConfigurationSection("spectator-region"), world, 80),
+                CuboidRegion.from(section.isConfigurationSection("protected-region")
+                        ? section.getConfigurationSection("protected-region")
+                        : null, world, 80),
                 section.getInt("countdown-seconds", 10),
                 section.getInt("round-duration-seconds", 300),
                 section.getInt("join-window-seconds", 45),

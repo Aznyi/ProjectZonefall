@@ -5,7 +5,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 /**
- * Sends concise arena lifecycle announcements to hub/spectator players.
+ * Sends concise arena lifecycle announcements to hub players.
  */
 public final class ArenaAnnouncementService {
     public void announce(ArenaController arena, String message) {
@@ -17,4 +17,3 @@ public final class ArenaAnnouncementService {
         }
     }
 }
-

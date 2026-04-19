@@ -191,7 +191,16 @@ public final class ArenaController implements ActivePlayerProvider {
         eliminatedPlayers.remove(player.getUniqueId());
         lootTracker.ensurePlayer(player.getUniqueId());
         services.profileService().loadProfile(player.getUniqueId());
-        player.teleport(definition.joinSpawn().toLocation());
+        Location joinLocation = SafePointResolver.resolve(definition.joinSpawn().toLocation(), definition.playableRegion())
+                .orElse(null);
+        if (joinLocation == null) {
+            participants.remove(player.getUniqueId());
+            lootTracker.removePlayer(player.getUniqueId());
+            player.sendMessage(Messages.error(displayName() + " join spawn is unsafe. Run /zonefall arena validate " + id() + " detailed."));
+            plugin.getLogger().warning("Refused join for " + player.getName() + " in " + id() + ": no safe join spawn.");
+            return false;
+        }
+        player.teleport(joinLocation);
         if (!player.isOp()) {
             player.setGameMode(GameMode.SURVIVAL);
             player.setAllowFlight(false);
@@ -250,24 +259,59 @@ public final class ArenaController implements ActivePlayerProvider {
         if (!isActiveParticipant(player.getUniqueId())) {
             return;
         }
+        if (player.getWorld() != runtimeArena.world()) {
+            SafePointResolver.resolve(definition.joinSpawn().toLocation(), definition.playableRegion())
+                    .ifPresentOrElse(player::teleport, () -> dropAndEliminate(player, true));
+            player.sendMessage(Messages.error("Arena world boundary enforced."));
+            return;
+        }
         ZoneController.BarrierStatus barrierStatus = zoneController.barrierStatus(player.getLocation());
-        if (barrierStatus == ZoneController.BarrierStatus.OUTSIDE && config.barrierInstantDeath()) {
-            player.sendMessage(Messages.error("You crossed the arena barrier."));
-            dropAndEliminate(player, true);
-            checkEmptyReset();
+        if (barrierStatus == ZoneController.BarrierStatus.OUTSIDE) {
+            if (zoneController.isShrinking() && config.barrierInstantDeath()) {
+                zoneController.recordAction(ZoneController.BarrierAction.INSTANT_DEATH, player.getLocation(), "shrinking");
+                player.sendMessage(Messages.error("You crossed the shrinking arena barrier."));
+                dropAndEliminate(player, true);
+                checkEmptyReset();
+            } else {
+                enforceSolidStationaryBarrier(player);
+            }
             return;
         }
         if (barrierStatus == ZoneController.BarrierStatus.NEAR_EDGE) {
-            player.teleport(zoneController.safeInside(player.getLocation()));
-            player.sendMessage(Messages.error("Barrier edge enforced."));
-            return;
-        }
-        if (!definition.playableRegion().contains(player.getLocation())) {
-            player.teleport(definition.joinSpawn().toLocation());
-            player.sendMessage(Messages.error("Arena boundary enforced."));
+            if (!zoneController.isShrinking()) {
+                enforceSolidStationaryBarrier(player);
+                return;
+            }
+            Location desired = zoneController.safeInside(player.getLocation());
+            SafePointResolver.resolve(desired, definition.playableRegion(), runtimeArena.center(), 12)
+                    .ifPresentOrElse(safeLocation -> {
+                        zoneController.recordAction(ZoneController.BarrierAction.TELEPORT_PROTECTION, safeLocation, "safe-fallback");
+                        player.teleport(safeLocation);
+                        player.sendMessage(Messages.error("Barrier edge enforced."));
+                    }, () -> {
+                        zoneController.recordAction(ZoneController.BarrierAction.UNSAFE_FALLBACK_DEATH, player.getLocation(), "no-safe-fallback");
+                        player.sendMessage(Messages.error("Barrier fallback was unsafe."));
+                        dropAndEliminate(player, true);
+                        checkEmptyReset();
+                    });
             return;
         }
         pickupDrops(player);
+    }
+
+    private void enforceSolidStationaryBarrier(Player player) {
+        Location desired = zoneController.safeInside(player.getLocation());
+        SafePointResolver.resolve(desired, definition.playableRegion(), runtimeArena.center(), 12)
+                .ifPresentOrElse(safeLocation -> {
+                    zoneController.recordAction(ZoneController.BarrierAction.SOLID_WALL_PROTECTION, safeLocation, "stationary");
+                    player.teleport(safeLocation);
+                    player.sendMessage(Messages.error("Arena barrier is closed."));
+                }, () -> {
+                    zoneController.recordAction(ZoneController.BarrierAction.UNSAFE_FALLBACK_DEATH, player.getLocation(), "stationary-no-safe-fallback");
+                    player.sendMessage(Messages.error("Barrier fallback was unsafe."));
+                    dropAndEliminate(player, true);
+                    checkEmptyReset();
+                });
     }
 
     public void handleMobKill(Player player) {
@@ -358,11 +402,7 @@ public final class ArenaController implements ActivePlayerProvider {
     }
 
     public boolean protects(Location location) {
-        return definition.spectatorRegion().contains(location) || definition.playableRegion().contains(location);
-    }
-
-    public boolean isSpectatorLocation(Location location) {
-        return definition.spectatorRegion().contains(location) && !definition.playableRegion().contains(location);
+        return definition.protectedRegion().contains(location) || definition.playableRegion().contains(location);
     }
 
     public boolean isParticipant(Player player) {
@@ -371,10 +411,6 @@ public final class ArenaController implements ActivePlayerProvider {
 
     public Location hubReturnLocation() {
         return definition.hubReturn().toLocation();
-    }
-
-    public Location spectatorLocation() {
-        return definition.spectatorPoint().toLocation();
     }
 
     public List<ExtractionZone> activeExtractionZones() {
@@ -393,6 +429,8 @@ public final class ArenaController implements ActivePlayerProvider {
                 + " eliminated=" + eliminatedPlayers.size()
                 + " remaining=" + remainingSeconds() + "s"
                 + " arenaSize=" + definition.playableRegion().describeSize()
+                + " movementBounds=world-border"
+                + " boundaryGrace=" + config.playableBoundaryGraceDistance()
                 + " join=" + (joinWindowOpen() ? "open" : "closed")
                 + " extractionReveal=" + extractionManager.revealState()
                 + " extracts=" + extractionManager.describeActiveZones()
@@ -437,8 +475,7 @@ public final class ArenaController implements ActivePlayerProvider {
                 + " lootMode=" + definition.lootActivationMode()
                 + " objectiveMode=" + objectiveManager.activationSummary()
                 + " objectives=" + objectiveManager.statusSummary()
-                + " validation=" + validationSummary()
-                + " spectatorPoint=" + spectatorLocation().getBlockX() + "," + spectatorLocation().getBlockY() + "," + spectatorLocation().getBlockZ();
+                + " validation=" + validationSummary();
     }
 
     public String debugLine() {

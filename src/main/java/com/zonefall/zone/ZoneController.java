@@ -16,6 +16,14 @@ public final class ZoneController {
         OUTSIDE
     }
 
+    public enum BarrierAction {
+        NONE,
+        TELEPORT_PROTECTION,
+        SOLID_WALL_PROTECTION,
+        UNSAFE_FALLBACK_DEATH,
+        INSTANT_DEATH
+    }
+
     private final Plugin plugin;
     private final ZonefallConfig config;
     private final Arena arena;
@@ -27,7 +35,13 @@ public final class ZoneController {
     private double originalSize;
     private double originalCenterX;
     private double originalCenterZ;
+    private double originalDamageAmount;
+    private double originalDamageBuffer;
+    private int originalWarningDistance;
+    private int originalWarningTimeTicks;
     private boolean started;
+    private BarrierAction lastAction = BarrierAction.NONE;
+    private String lastActionDetail = "none";
 
     public ZoneController(Plugin plugin, ZonefallConfig config, Arena arena) {
         this.plugin = plugin;
@@ -55,10 +69,18 @@ public final class ZoneController {
         originalSize = border.getSize();
         originalCenterX = border.getCenter().getX();
         originalCenterZ = border.getCenter().getZ();
+        originalDamageAmount = border.getDamageAmount();
+        originalDamageBuffer = border.getDamageBuffer();
+        originalWarningDistance = border.getWarningDistance();
+        originalWarningTimeTicks = border.getWarningTimeTicks();
         started = true;
 
         border.setCenter(arena.center().getX(), arena.center().getZ());
         border.setSize(borderStartSize);
+        border.setDamageAmount(0.0);
+        border.setDamageBuffer(0.0);
+        border.setWarningDistance(0);
+        border.setWarningTimeTicks(0);
         shrinking = false;
         plugin.getLogger().info("Zone border started at " + borderStartSize
                 + " and will shrink to " + borderEndSize
@@ -85,14 +107,32 @@ public final class ZoneController {
         double dx = Math.abs(location.getX() - arena.center().getX());
         double dz = Math.abs(location.getZ() - arena.center().getZ());
         double furthestAxis = Math.max(dx, dz);
-        if (furthestAxis > radius) {
-            return BarrierStatus.OUTSIDE;
+        if (furthestAxis <= radius) {
+            return BarrierStatus.INSIDE;
         }
-        double distanceToEdge = radius - furthestAxis;
-        if (distanceToEdge <= config.barrierProtectionDistance()) {
+        double distancePastEdge = furthestAxis - radius;
+        if (distancePastEdge <= config.barrierProtectionDistance()) {
             return BarrierStatus.NEAR_EDGE;
         }
-        return BarrierStatus.INSIDE;
+        return BarrierStatus.OUTSIDE;
+    }
+
+    public void recordAction(BarrierAction action, Location location) {
+        recordAction(action, location, "");
+    }
+
+    public void recordAction(BarrierAction action, Location location, String note) {
+        lastAction = action;
+        lastActionDetail = action.name().toLowerCase(java.util.Locale.ROOT)
+                + "@"
+                + location.getWorld().getName()
+                + " "
+                + Math.round(location.getX() * 10.0) / 10.0
+                + ","
+                + Math.round(location.getY() * 10.0) / 10.0
+                + ","
+                + Math.round(location.getZ() * 10.0) / 10.0
+                + (note == null || note.isBlank() ? "" : " " + note);
     }
 
     public Location safeInside(Location location) {
@@ -118,9 +158,17 @@ public final class ZoneController {
         WorldBorder border = arena.world().getWorldBorder();
         border.setCenter(originalCenterX, originalCenterZ);
         border.setSize(Math.max(1.0, originalSize));
+        border.setDamageAmount(originalDamageAmount);
+        border.setDamageBuffer(originalDamageBuffer);
+        border.setWarningDistance(originalWarningDistance);
+        border.setWarningTimeTicks(originalWarningTimeTicks);
         shrinking = false;
         started = false;
         plugin.getLogger().info("Zone border restored.");
+    }
+
+    public boolean isShrinking() {
+        return shrinking;
     }
 
     public String debugSummary() {
@@ -131,7 +179,12 @@ public final class ZoneController {
                 + " currentSize=" + Math.round(currentSize())
                 + " currentRadius=" + Math.round(currentRadius())
                 + " protectionDistance=" + config.barrierProtectionDistance()
+                + " protectionBand=outside-only"
+                + " stationaryBarrier=solid"
                 + " instantDeath=" + config.barrierInstantDeath()
+                + " vanillaDamage=disabled"
+                + " lastAction=" + lastAction
+                + " lastActionDetail=" + lastActionDetail
                 + " shrinking=" + shrinking;
     }
 

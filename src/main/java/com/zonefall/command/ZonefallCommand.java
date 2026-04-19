@@ -20,7 +20,7 @@ import java.util.Locale;
 public final class ZonefallCommand implements CommandExecutor, TabCompleter {
     private static final List<String> SUBCOMMANDS = List.of(
             "help", "create", "start", "stop", "join", "leave", "status", "extract",
-            "stash", "grantloot", "lootstatus", "placeloot", "lootreload", "extractstatus", "arena", "spectate"
+            "stash", "grantloot", "lootstatus", "placeloot", "lootreload", "extractstatus", "arena"
     );
 
     private final MatchManager matchManager;
@@ -62,13 +62,6 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
             }
             case "lootreload" -> matchManager.lootReload(sender);
             case "extractstatus" -> matchManager.extractStatus(sender, args.length >= 2 ? args[1] : null);
-            case "spectate" -> {
-                if (args.length < 2) {
-                    sender.sendMessage(Messages.error("Usage: /zonefall spectate <id>"));
-                    return true;
-                }
-                requirePlayer(sender, player -> matchManager.spectate(player, args[1]));
-            }
             default -> sender.sendMessage(Messages.error("Unknown command. Try /" + label + " help."));
         }
         return true;
@@ -100,19 +93,17 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
         sender.sendMessage(Messages.info("/zonefall arena debug <id>"));
         sender.sendMessage(Messages.info("/zonefall arena objectives <id>"));
         sender.sendMessage(Messages.info("/zonefall arena validate <id> [detailed]"));
-        sender.sendMessage(Messages.info("/zonefall arena setpoint <id> <center|join-spawn|spectator-point>"));
+        sender.sendMessage(Messages.info("/zonefall arena setpoint <id> <center|join-spawn>"));
         sender.sendMessage(Messages.info("/zonefall arena setpoint <id> extraction <index>"));
         sender.sendMessage(Messages.info("/zonefall arena setpoint <id> objective <objective-id>"));
         sender.sendMessage(Messages.info("/zonefall arena setpoint <id> loot-source <loot-source-id>"));
         sender.sendMessage(Messages.info("/zonefall arena setpoint <id> join-point <join-point-id>"));
-        sender.sendMessage(Messages.info("/zonefall arena setregion <id> <playable|spectator> <pos1|pos2>"));
+        sender.sendMessage(Messages.info("/zonefall arena setregion <id> <playable|protected> <pos1|pos2>"));
         sender.sendMessage(Messages.info("/zonefall arena reloadconfig"));
         sender.sendMessage(Messages.info("/zonefall arena save"));
         sender.sendMessage(Messages.info("/zonefall arena tp <id> <point> [index|id]"));
         sender.sendMessage(Messages.info("/zonefall arena forcestart <id>"));
         sender.sendMessage(Messages.info("/zonefall arena reset <id>"));
-        sender.sendMessage(Messages.info("/zonefall arena spectate <id>"));
-        sender.sendMessage(Messages.info("/zonefall spectate <id>"));
         sender.sendMessage(Messages.info("/zonefall extract - extract when inside an extraction zone"));
         sender.sendMessage(Messages.info("/zonefall stash - show your in-memory stash"));
         sender.sendMessage(Messages.info("/zonefall grantloot <player> <type> <amount> - grant match loot"));
@@ -185,7 +176,7 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
             }
             case "setregion" -> {
                 if (args.length < 5) {
-                    sender.sendMessage(Messages.error("Usage: /" + label + " arena setregion <id> <playable|spectator> <pos1|pos2>"));
+                    sender.sendMessage(Messages.error("Usage: /" + label + " arena setregion <id> <playable|protected> <pos1|pos2>"));
                     return;
                 }
                 requirePlayer(sender, player -> authoringService.setRegion(player, args[2], args[3], args[4]));
@@ -212,13 +203,6 @@ public final class ZonefallCommand implements CommandExecutor, TabCompleter {
                     return;
                 }
                 matchManager.resetArena(sender, args[2]);
-            }
-            case "spectate" -> {
-                if (args.length < 3) {
-                    sender.sendMessage(Messages.error("Usage: /" + label + " arena spectate <id>"));
-                    return;
-                }
-                requirePlayer(sender, player -> matchManager.spectate(player, args[2]));
             }
             default -> sender.sendMessage(Messages.error("Unknown arena command. Try /" + label + " help."));
         }

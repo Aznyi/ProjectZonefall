@@ -37,10 +37,9 @@ public final class ArenaValidator {
         entries.add(dimensionEntry(arena));
         entries.add(hubDistanceEntry(config, arena));
         entries.add(regionEntry("playable-region", arena.center().toLocation(), arena.playableRegion()));
-        entries.add(regionEntry("spectator-region", arena.spectatorPoint().toLocation(), arena.spectatorRegion()));
+        entries.add(regionEntry("protected-region", arena.center().toLocation(), arena.protectedRegion()));
         entries.add(pointEntry(config, arena, "center", arena.center().toLocation()));
         entries.add(pointEntry(config, arena, "join-spawn", arena.joinSpawn().toLocation()));
-        entries.add(pointEntry(config, arena, "spectator-point", arena.spectatorPoint().toLocation()));
         int index = 1;
         for (LocationSpec point : arena.extractions()) {
             entries.add(pointEntry(config, arena, "extraction-" + index, point.toLocation()));
@@ -83,7 +82,7 @@ public final class ArenaValidator {
             return new ValidationEntry(ValidationStatus.FAIL, label, location,
                     "inside hub exclusion radius", detail(config, arena, location));
         }
-        ValidationStatus status = arena.playableRegion().contains(location) || label.equals("spectator-point")
+        ValidationStatus status = arena.playableRegion().contains(location)
                 ? ValidationStatus.PASS
                 : ValidationStatus.WARN;
         String reason = status == ValidationStatus.PASS ? "solid ground / clear space" : "safe but outside playable region";
@@ -119,7 +118,7 @@ public final class ArenaValidator {
                 + " feet=" + location.getBlock().getType()
                 + " head=" + location.getBlock().getRelative(0, 1, 0).getType()
                 + " inPlayable=" + arena.playableRegion().contains(location)
-                + " inSpectator=" + arena.spectatorRegion().contains(location)
+                + " inProtected=" + arena.protectedRegion().contains(location)
                 + " inHubRadius=" + isInsideHubRadius(config, arena, location);
     }
 

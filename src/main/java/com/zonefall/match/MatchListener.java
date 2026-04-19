@@ -13,7 +13,6 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.entity.EntityCombustEvent;
-import org.bukkit.event.entity.FoodLevelChangeEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -101,7 +100,7 @@ public final class MatchListener implements Listener {
         if (event.getClickedBlock() == null) {
             return;
         }
-        if (!matchManager.canSpectatorInteract(event.getPlayer(), event.getClickedBlock().getLocation())) {
+        if (!matchManager.canArenaInteract(event.getPlayer(), event.getClickedBlock().getLocation())) {
             event.setCancelled(true);
             return;
         }
@@ -131,7 +130,7 @@ public final class MatchListener implements Listener {
             event.setCancelled(true);
             return;
         }
-        if (attacker != null && !matchManager.canSpectatorInteract(attacker, event.getEntity().getLocation())) {
+        if (attacker != null && !matchManager.canArenaInteract(attacker, event.getEntity().getLocation())) {
             event.setCancelled(true);
         }
     }
@@ -141,23 +140,8 @@ public final class MatchListener implements Listener {
         if (!(event.getEntity() instanceof Player player)) {
             return;
         }
-        if (matchManager.shouldPreventSpectatorDamage() && matchManager.isSpectating(player)) {
-            event.setCancelled(true);
-            return;
-        }
         if (!event.isCancelled()) {
             matchManager.handleDamage(player);
-        }
-    }
-
-    @EventHandler
-    public void onFoodLevelChange(FoodLevelChangeEvent event) {
-        if (matchManager.shouldPreventSpectatorHunger()
-                && event.getEntity() instanceof Player player
-                && matchManager.isSpectating(player)) {
-            event.setCancelled(true);
-            player.setFoodLevel(20);
-            player.setSaturation(20.0f);
         }
     }
 

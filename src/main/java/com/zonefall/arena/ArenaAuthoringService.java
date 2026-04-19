@@ -44,7 +44,7 @@ public final class ArenaAuthoringService {
 
         String validationLabel = pointType.toLowerCase(Locale.ROOT);
         boolean updated = switch (pointType.toLowerCase(Locale.ROOT)) {
-            case "center", "join-spawn", "spectator-point" -> {
+            case "center", "join-spawn" -> {
                 writeLocation(config, arenaPath + "." + pointType.toLowerCase(Locale.ROOT), player.getLocation(), true);
                 yield true;
             }
@@ -65,7 +65,7 @@ public final class ArenaAuthoringService {
                 yield validationLabel != null;
             }
             default -> {
-                player.sendMessage(Messages.error("Unknown point type. Try center, join-spawn, spectator-point, extraction, objective, loot-source."));
+                player.sendMessage(Messages.error("Unknown point type. Try center, join-spawn, extraction, objective, loot-source."));
                 yield false;
             }
         };
@@ -84,8 +84,8 @@ public final class ArenaAuthoringService {
             return;
         }
         String normalizedRegion = regionType.toLowerCase(Locale.ROOT);
-        if (!normalizedRegion.equals("playable") && !normalizedRegion.equals("spectator")) {
-            player.sendMessage(Messages.error("Region must be playable or spectator."));
+        if (!normalizedRegion.equals("playable") && !normalizedRegion.equals("protected")) {
+            player.sendMessage(Messages.error("Region must be playable or protected."));
             return;
         }
         String normalizedPosition = positionName.toLowerCase(Locale.ROOT);
@@ -148,7 +148,7 @@ public final class ArenaAuthoringService {
         }
         Optional<Location> target = resolvePoint(arenaId, pointName, selector);
         if (target.isEmpty()) {
-            player.sendMessage(Messages.error("Could not resolve point. Try center, join-spawn, spectator-point, extraction <index>, objective <id>, loot-source <id>."));
+            player.sendMessage(Messages.error("Could not resolve point. Try center, join-spawn, extraction <index>, objective <id>, loot-source <id>."));
             return;
         }
         player.teleport(target.get());
@@ -298,7 +298,6 @@ public final class ArenaAuthoringService {
         return switch (pointName.toLowerCase(Locale.ROOT)) {
             case "center" -> Optional.of(arena.center().toLocation());
             case "join-spawn" -> Optional.of(arena.joinSpawn().toLocation());
-            case "spectator-point" -> Optional.of(arena.spectatorPoint().toLocation());
             case "extraction" -> {
                 int index = parsePositiveIndex(selector).orElse(-1);
                 yield index >= 1 && index <= arena.extractions().size()

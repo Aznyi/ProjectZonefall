@@ -18,7 +18,7 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * Lightweight labels for spectator points and active extraction routes.
+ * Lightweight labels for active extraction routes and objectives.
  */
 public final class WorldMarkerLabelService {
     private final Plugin plugin;
@@ -55,11 +55,6 @@ public final class WorldMarkerLabelService {
     private void refresh() {
         Set<String> liveKeys = new HashSet<>();
         for (ArenaController arena : arenaManager.arenas()) {
-            if (config.spectatorLabelsEnabled()) {
-                String key = arena.id() + ":spectator";
-                liveKeys.add(key);
-                refreshLabel(key, arena.spectatorLocation(), "Spectate " + arena.displayName(), config.spectatorLabelHeight());
-            }
             if (config.extractionLabelsEnabled()) {
                 for (ExtractionZone zone : arena.activeExtractionZones()) {
                     String key = arena.id() + ":extract:" + zone.id();

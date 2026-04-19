@@ -58,10 +58,6 @@ public final class ArenaManager {
         return arenas.values().stream().filter(arena -> arena.protects(location)).findFirst();
     }
 
-    public Optional<ArenaController> findSpectatorRegion(Location location) {
-        return arenas.values().stream().filter(arena -> arena.isSpectatorLocation(location)).findFirst();
-    }
-
     public Optional<ArenaController> findActivePlayableRegion(Location location) {
         return arenas.values().stream().filter(arena -> arena.allowsArenaMobSpawn(location)).findFirst();
     }

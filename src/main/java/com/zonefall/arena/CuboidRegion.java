@@ -5,7 +5,7 @@ import org.bukkit.World;
 import org.bukkit.configuration.ConfigurationSection;
 
 /**
- * Simple axis-aligned region for arena gameplay and spectator protection.
+ * Simple axis-aligned region for arena gameplay and protected outer bounds.
  */
 public record CuboidRegion(String worldName, int minX, int minY, int minZ, int maxX, int maxY, int maxZ) {
     public static CuboidRegion from(ConfigurationSection section, String fallbackWorld, int defaultRadius) {
@@ -40,6 +40,16 @@ public record CuboidRegion(String worldName, int minX, int minY, int minZ, int m
                 && location.getBlockY() <= maxY
                 && location.getBlockZ() >= minZ
                 && location.getBlockZ() <= maxZ;
+    }
+
+    public double distanceOutside2d(Location location) {
+        World world = location.getWorld();
+        if (world == null || !world.getName().equals(worldName)) {
+            return Double.MAX_VALUE;
+        }
+        double dx = Math.max(Math.max(minX - location.getX(), 0.0), location.getX() - maxX);
+        double dz = Math.max(Math.max(minZ - location.getZ(), 0.0), location.getZ() - maxZ);
+        return Math.sqrt(dx * dx + dz * dz);
     }
 
     public int width() {

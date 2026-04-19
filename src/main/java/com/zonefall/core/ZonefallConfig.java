@@ -28,6 +28,7 @@ public record ZonefallConfig(
         double borderEndSize,
         double barrierProtectionDistance,
         boolean barrierInstantDeath,
+        double playableBoundaryGraceDistance,
         int mobSpawnIntervalSeconds,
         int mobsPerPlayer,
         double spawnMinDistance,
@@ -48,15 +49,10 @@ public record ZonefallConfig(
         int defaultShrinkDurationSeconds,
         List<ThreatPhaseConfig> threatPhases,
         boolean joinPadParticles,
-        boolean spectatorFlightEnabled,
-        boolean spectatorPreventDamage,
-        boolean spectatorPreventHunger,
         boolean joinPadLabelsEnabled,
         double joinPadLabelHeight,
         boolean extractionLabelsEnabled,
-        double extractionLabelHeight,
-        boolean spectatorLabelsEnabled,
-        double spectatorLabelHeight
+        double extractionLabelHeight
 ) {
     public static ZonefallConfig from(FileConfiguration config) {
         return new ZonefallConfig(
@@ -68,6 +64,7 @@ public record ZonefallConfig(
                 config.getDouble("zone.border-end-size", 75.0),
                 config.getDouble("zone.barrier-protection-distance", 1.0),
                 config.getBoolean("zone.barrier-instant-death", true),
+                config.getDouble("zone.playable-boundary-grace-distance", 3.0),
                 config.getInt("pve.mob-spawn-interval-seconds", 20),
                 config.getInt("pve.mobs-per-player", 2),
                 config.getDouble("pve.spawn-min-distance", 12.0),
@@ -88,15 +85,10 @@ public record ZonefallConfig(
                 config.getInt("arena-defaults.shrink-duration-seconds", 420),
                 readThreatPhases(config),
                 config.getBoolean("ui.join-pad-particles", true),
-                config.getBoolean("spectator.allow-flight", true),
-                config.getBoolean("spectator.prevent-damage", true),
-                config.getBoolean("spectator.prevent-hunger", true),
                 config.getBoolean("ui.join-pad-labels.enabled", true),
                 config.getDouble("ui.join-pad-labels.height", 2.2),
                 config.getBoolean("ui.extraction-labels.enabled", true),
-                config.getDouble("ui.extraction-labels.height", 2.4),
-                config.getBoolean("ui.spectator-labels.enabled", true),
-                config.getDouble("ui.spectator-labels.height", 2.4)
+                config.getDouble("ui.extraction-labels.height", 2.4)
         );
     }
 
@@ -255,7 +247,6 @@ public record ZonefallConfig(
                 center,
                 new LocationSpec(world, offsetX + 0.5, hubSpawn.y(), 132.5, 180, 0),
                 hubSpawn,
-                new LocationSpec(world, offsetX + 0.5, hubSpawn.y() + 8, 175.5, 180, 20),
                 new LocationSpec(world, offsetX + 20.5, hubSpawn.y(), 100.5, 90, 0),
                 List.of(new LocationSpec(world, offsetX + 20.5, hubSpawn.y(), 100.5, 90, 0)),
                 com.zonefall.extract.ExtractionActivationMode.ALL_ACTIVE,

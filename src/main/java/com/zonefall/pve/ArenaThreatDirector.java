@@ -118,7 +118,7 @@ public final class ArenaThreatDirector {
         if (!arena.playableRegion().contains(location)) {
             return false;
         }
-        if (arena.spectatorRegion().contains(location) && !arena.playableRegion().contains(location)) {
+        if (arena.protectedRegion().contains(location) && !arena.playableRegion().contains(location)) {
             return false;
         }
         if (isNearActivePlayer(location)) {

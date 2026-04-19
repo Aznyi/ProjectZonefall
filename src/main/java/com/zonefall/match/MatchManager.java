@@ -9,7 +9,6 @@ import com.zonefall.loot.LootType;
 import com.zonefall.loot.source.LootSourceType;
 import com.zonefall.util.Messages;
 import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
 import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -142,20 +141,6 @@ public final class MatchManager {
         }
     }
 
-    public void spectate(Player player, String id) {
-        if (arenaManager.findForPlayer(player.getUniqueId()).isPresent()) {
-            player.sendMessage(Messages.error("Leave your current arena before spectating."));
-            return;
-        }
-        ArenaController arena = requireArena(player, id);
-        if (arena == null) {
-            return;
-        }
-        player.teleport(arena.spectatorLocation());
-        updateSpectatorState(player);
-        player.sendMessage(Messages.ok("Spectating " + arena.displayName() + "."));
-    }
-
     public void stash(Player player) {
         player.sendMessage(Messages.info("Stash: " + services.stashService()
                 .getContents(player.getUniqueId()).describe()));
@@ -245,7 +230,6 @@ public final class MatchManager {
         if (arenaManager.findForPlayer(player.getUniqueId()).isEmpty()) {
             arenaManager.findJoinPoint(player.getLocation()).ifPresent(arena -> arena.join(player));
         }
-        updateSpectatorState(player);
         arenaManager.handleMove(player);
     }
 
@@ -302,42 +286,13 @@ public final class MatchManager {
                 .orElse(false);
     }
 
-    public boolean canSpectatorInteract(Player player, org.bukkit.Location location) {
+    public boolean canArenaInteract(Player player, org.bukkit.Location location) {
         Optional<ArenaController> arena = arenaManager.findProtecting(location);
         return arena.isEmpty() || arena.get().isParticipant(player);
     }
 
     public boolean isArenaParticipant(Player player) {
         return arenaManager.findForPlayer(player.getUniqueId()).isPresent();
-    }
-
-    public boolean isSpectating(Player player) {
-        return arenaManager.findForPlayer(player.getUniqueId()).isEmpty()
-                && arenaManager.findSpectatorRegion(player.getLocation()).isPresent();
-    }
-
-    public boolean shouldPreventSpectatorDamage() {
-        return config.spectatorPreventDamage();
-    }
-
-    public boolean shouldPreventSpectatorHunger() {
-        return config.spectatorPreventHunger();
-    }
-
-    public void updateSpectatorState(Player player) {
-        if (isSpectating(player)) {
-            if (config.spectatorFlightEnabled()) {
-                player.setAllowFlight(true);
-            }
-            player.setFoodLevel(20);
-            player.setSaturation(20.0f);
-        } else if (!isArenaParticipant(player) && player.getAllowFlight()) {
-            if (player.isOp() || player.getGameMode() == GameMode.CREATIVE || player.getGameMode() == GameMode.SPECTATOR) {
-                return;
-            }
-            player.setFlying(false);
-            player.setAllowFlight(false);
-        }
     }
 
     public void shutdown() {
