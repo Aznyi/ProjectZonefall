@@ -1,6 +1,7 @@
 package com.zonefall.customblock;
 
 import com.zonefall.util.Messages;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Chunk;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -57,7 +58,7 @@ public final class OdinLightManager {
     public ItemStack createItem(int amount) {
         ItemStack item = new ItemStack(PRIMARY_MATERIAL, Math.max(1, amount));
         ItemMeta meta = item.getItemMeta();
-        meta.setDisplayName("Odin's Light");
+        meta.displayName(Component.text("Odin's Light"));
         meta.getPersistentDataContainer().set(itemKey, PersistentDataType.STRING, ITEM_ID_VALUE);
         item.setItemMeta(meta);
         return item;
